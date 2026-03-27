@@ -2,6 +2,9 @@
 
 This project now runs on Bun as the default backend/runtime for Next.js.
 
+The `dev`, `build`, and `start` scripts are powered by the built-in Next.js CLI.
+There is no separate custom backend server file for these commands.
+
 ## Requirements
 
 - Bun 1.3.11 or newer
@@ -20,17 +23,23 @@ Start the development server:
 bun run dev
 ```
 
+This runs `next dev --hostname 0.0.0.0`.
+
 Create a production build:
 
 ```bash
 bun run build
 ```
 
+This runs `next build`.
+
 Start the production server:
 
 ```bash
 bun run start
 ```
+
+This runs `next start --hostname 0.0.0.0`, and it requires `bun run build` first.
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
