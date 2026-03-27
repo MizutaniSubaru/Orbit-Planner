@@ -39,7 +39,6 @@ export const GROUPS = [
 export const PRIORITIES = ['low', 'medium', 'high'] as const;
 export const TODO_STATUSES = ['pending', 'completed'] as const;
 export const EVENT_STATUSES = ['scheduled', 'completed', 'cancelled'] as const;
-export const CALENDAR_VIEWS = ['month', 'week'] as const;
 
 export const DEFAULT_TIMEZONE = 'Asia/Shanghai';
 export const DEFAULT_EVENT_MINUTES = 60;

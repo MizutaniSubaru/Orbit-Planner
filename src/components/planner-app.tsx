@@ -7,15 +7,9 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { CalendarMonth } from '@/components/calendar-month';
-import { CalendarWeek } from '@/components/calendar-week';
+import { CalendarFull } from '@/components/calendar-full';
 import { ItemEditor } from '@/components/item-editor';
-import {
-  CALENDAR_VIEWS,
-  DEFAULT_TIMEZONE,
-  GROUPS,
-  PRIORITIES,
-} from '@/lib/constants';
+import { DEFAULT_TIMEZONE, GROUPS, PRIORITIES } from '@/lib/constants';
 import { COPY } from '@/lib/copy';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 import {
@@ -570,7 +564,7 @@ function EmptyWorkspace({ copy }: { copy: typeof COPY.en }) {
 export function PlannerApp() {
   const supabase = getSupabaseClient();
   const configured = isSupabaseConfigured();
-  const [locale, setLocale] = useState(resolveLocale);
+  const [locale, setLocale] = useState('zh-CN');
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
   const [items, setItems] = useState<Item[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -580,7 +574,6 @@ export function PlannerApp() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [calendarView, setCalendarView] = useState<(typeof CALENDAR_VIEWS)[number]>('month');
   const [focusDate, setFocusDate] = useState(() => new Date());
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -813,16 +806,6 @@ export function PlannerApp() {
           </h1>
         </div>
         <div className="planner-hero__controls">
-          {CALENDAR_VIEWS.map((view) => (
-            <button
-              className={`planner-tab ${calendarView === view ? 'is-active' : ''}`}
-              key={view}
-              onClick={() => setCalendarView(view)}
-              type="button"
-            >
-              {view}
-            </button>
-          ))}
           <button
             className="planner-button planner-button--ghost"
             onClick={() =>
@@ -865,23 +848,13 @@ export function PlannerApp() {
       </section>
 
       <section className="planner-grid planner-grid--bottom planner-grid--triple">
-        {calendarView === 'month' ? (
-          <CalendarMonth
-            focusDate={focusDate}
-            items={calendarItems}
-            locale={locale}
-            onFocusDateChange={setFocusDate}
-            onSelectItem={setSelectedItem}
-          />
-        ) : (
-          <CalendarWeek
-            focusDate={focusDate}
-            items={calendarItems}
-            locale={locale}
-            onFocusDateChange={setFocusDate}
-            onSelectItem={setSelectedItem}
-          />
-        )}
+        <CalendarFull
+          focusDate={focusDate}
+          items={calendarItems}
+          locale={locale}
+          onFocusDateChange={setFocusDate}
+          onSelectItem={setSelectedItem}
+        />
         <TodoRail
           copy={copy}
           groupFilter={groupFilter}
