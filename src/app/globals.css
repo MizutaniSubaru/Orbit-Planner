@@ -207,6 +207,10 @@ button:disabled {
   grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.8fr);
 }
 
+.planner-grid--triple {
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr) minmax(320px, 0.8fr);
+}
+
 .planner-panel,
 .landing-card,
 .callback-card {
@@ -238,7 +242,8 @@ button:disabled {
 .status-strip,
 .month-grid__items,
 .week-grid__items,
-.todo-list {
+.todo-list,
+.history-list {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -441,6 +446,13 @@ button:disabled {
   content-visibility: auto;
 }
 
+.history-list {
+  max-height: 760px;
+  overflow: auto;
+  padding-right: 6px;
+  content-visibility: auto;
+}
+
 .todo-card {
   display: flex;
   align-items: center;
@@ -490,6 +502,65 @@ button:disabled {
 
 .todo-card__dot--high {
   background: #dd6948;
+}
+
+.history-card {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.history-card h3 {
+  margin: 10px 0 8px;
+  font-size: 1rem;
+}
+
+.history-card p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.history-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-card__meta time {
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+}
+
+.history-card__badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.history-card__badge--created {
+  color: #1f5c48;
+  background: rgba(31, 92, 72, 0.12);
+}
+
+.history-card__badge--updated {
+  color: #7b5616;
+  background: rgba(213, 164, 74, 0.16);
+}
+
+.history-card__badge--completed {
+  color: #1c4d86;
+  background: rgba(79, 124, 255, 0.12);
+}
+
+.history-card__badge--deleted {
+  color: #8a3b21;
+  background: rgba(221, 105, 72, 0.12);
 }
 
 .landing-shell,

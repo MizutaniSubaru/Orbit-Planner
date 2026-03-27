@@ -7,8 +7,7 @@ import type {
 } from '@/lib/constants';
 
 export type Item = Database['public']['Tables']['items']['Row'];
-export type CalendarConnection =
-  Database['public']['Tables']['calendar_connections']['Row'];
+export type ActivityLog = Database['public']['Tables']['activity_logs']['Row'];
 export type GroupKey = (typeof GROUPS)[number]['key'];
 export type Priority = (typeof PRIORITIES)[number];
 export type TodoStatus = (typeof TODO_STATUSES)[number];
@@ -36,7 +35,6 @@ export type CreateItemPayload = {
   due_date: string | null;
   end_at: string | null;
   estimated_minutes: number | null;
-  google_access_token?: string | null;
   group_key: GroupKey;
   is_all_day: boolean;
   notes: string;
@@ -50,28 +48,24 @@ export type CreateItemPayload = {
 };
 
 export type UpdateItemPayload = Partial<CreateItemPayload> & {
-  google_access_token?: string | null;
   status?: string;
 };
+
+export type ActivityAction = 'created' | 'updated' | 'completed' | 'deleted';
 
 export type LocaleCopy = {
   actions: {
     analyze: string;
     cancel: string;
-    connectGoogle: string;
     create: string;
     delete: string;
     refresh: string;
     save: string;
-    signIn: string;
-    signOut: string;
   };
   badges: {
     aiSuggested: string;
     allDay: string;
     demoFallback: string;
-    googleReady: string;
-    localOnly: string;
     needsConfirmation: string;
   };
   labels: {
@@ -91,6 +85,7 @@ export type LocaleCopy = {
     calendar: string;
     confirmation: string;
     editor: string;
+    history: string;
     intake: string;
     todo: string;
   };

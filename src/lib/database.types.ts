@@ -9,39 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      calendar_connections: {
+      activity_logs: {
         Row: {
-          calendar_id: string;
-          calendar_summary: string | null;
-          connection_status: string;
+          action: string;
           created_at: string | null;
-          is_enabled: boolean;
-          last_synced_at: string | null;
-          provider: string;
-          updated_at: string | null;
-          user_id: string;
+          details_json: Json;
+          id: string;
+          item_id: string | null;
+          item_title: string;
+          item_type: string;
+          summary: string;
         };
         Insert: {
-          calendar_id?: string;
-          calendar_summary?: string | null;
-          connection_status?: string;
+          action: string;
           created_at?: string | null;
-          is_enabled?: boolean;
-          last_synced_at?: string | null;
-          provider?: string;
-          updated_at?: string | null;
-          user_id: string;
+          details_json?: Json;
+          id?: string;
+          item_id?: string | null;
+          item_title: string;
+          item_type: string;
+          summary: string;
         };
         Update: {
-          calendar_id?: string;
-          calendar_summary?: string | null;
-          connection_status?: string;
+          action?: string;
           created_at?: string | null;
-          is_enabled?: boolean;
-          last_synced_at?: string | null;
-          provider?: string;
-          updated_at?: string | null;
-          user_id?: string;
+          details_json?: Json;
+          id?: string;
+          item_id?: string | null;
+          item_title?: string;
+          item_type?: string;
+          summary?: string;
         };
         Relationships: [];
       };
@@ -75,7 +72,6 @@ export type Database = {
           due_date: string | null;
           end_at: string | null;
           estimated_minutes: number | null;
-          google_event_id: string | null;
           group_key: string;
           id: string;
           is_all_day: boolean;
@@ -86,18 +82,15 @@ export type Database = {
           source_text: string | null;
           start_at: string | null;
           status: string;
-          sync_state: string;
           title: string;
           type: string;
           updated_at: string | null;
-          user_id: string;
         };
         Insert: {
           created_at?: string | null;
           due_date?: string | null;
           end_at?: string | null;
           estimated_minutes?: number | null;
-          google_event_id?: string | null;
           group_key?: string;
           id?: string;
           is_all_day?: boolean;
@@ -108,18 +101,15 @@ export type Database = {
           source_text?: string | null;
           start_at?: string | null;
           status?: string;
-          sync_state?: string;
           title: string;
           type: string;
           updated_at?: string | null;
-          user_id: string;
         };
         Update: {
           created_at?: string | null;
           due_date?: string | null;
           end_at?: string | null;
           estimated_minutes?: number | null;
-          google_event_id?: string | null;
           group_key?: string;
           id?: string;
           is_all_day?: boolean;
@@ -130,11 +120,9 @@ export type Database = {
           source_text?: string | null;
           start_at?: string | null;
           status?: string;
-          sync_state?: string;
           title?: string;
           type?: string;
           updated_at?: string | null;
-          user_id?: string;
         };
         Relationships: [];
       };

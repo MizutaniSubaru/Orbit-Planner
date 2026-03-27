@@ -4,17 +4,17 @@ An AI-first task calendar manager built with `Next.js`, `Bun`, and `Supabase`.
 
 ## What It Does
 
-- Google sign-in via Supabase Auth
+- Shared anonymous workspace with no sign-in flow
 - Natural-language intake in Chinese and English
 - AI classification into calendar events vs. to-do items
 - Confirmation card before creating ambiguous or inferred events
 - Month view, week view, and filtered to-do rail
-- One-way Google Calendar sync for app-created events
+- Activity timeline for created, updated, completed, and deleted items
 
 ## Requirements
 
 - Bun `1.3.11` or newer
-- A Supabase project with Google Auth configured
+- A Supabase project
 - Optional AI provider credentials:
   - `OPENAI_*` for OpenAI-compatible models
   - or `KIMI_*` for Moonshot/Kimi
@@ -37,11 +37,11 @@ If no AI key is configured, the app falls back to a lightweight heuristic parser
 ## Supabase Setup
 
 1. Run the SQL in [`supabase/schema.sql`](./supabase/schema.sql).
-2. Enable Google Auth in Supabase.
-3. Add the Google Calendar scope to your Google provider setup:
-   - `https://www.googleapis.com/auth/calendar`
-4. Set the OAuth redirect URL to:
-   - `http://localhost:3000/auth/callback`
+2. Confirm the tables exist:
+   - `groups`
+   - `items`
+   - `activity_logs`
+3. Use the project `anon` key in `.env.local`.
 
 ## Commands
 
@@ -53,6 +53,6 @@ bun run build
 
 ## Notes
 
-- Google sync is one-way: app changes push to Google Calendar.
-- The app does not pull changes back from Google Calendar.
-- Repeating events, reminders, and team collaboration are intentionally out of scope for `v1`.
+- This is a shared demo workspace, not a production multi-user app.
+- History is stored as an activity feed for `created`, `updated`, `completed`, and `deleted`.
+- Repeating events, reminders, collaboration, and external calendar sync are intentionally out of scope for `v1`.

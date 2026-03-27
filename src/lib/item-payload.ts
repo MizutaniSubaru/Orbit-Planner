@@ -85,7 +85,6 @@ export function normalizeCreatePayload(payload: Partial<CreateItemPayload>) {
         : type === 'event'
           ? 'scheduled'
           : 'pending',
-    sync_state: 'local_only',
     title: asNullableString(payload.title) ?? 'Untitled item',
     type,
   };

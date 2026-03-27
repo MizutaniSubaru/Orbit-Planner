@@ -1,14 +1,12 @@
 'use client';
 
 import {
-  type Dispatch,
-  type SetStateAction,
   startTransition,
+  useCallback,
   useDeferredValue,
   useEffect,
   useState,
 } from 'react';
-import type { Session } from '@supabase/supabase-js';
 import { CalendarMonth } from '@/components/calendar-month';
 import { CalendarWeek } from '@/components/calendar-week';
 import { ItemEditor } from '@/components/item-editor';
@@ -20,28 +18,20 @@ import {
 } from '@/lib/constants';
 import { COPY } from '@/lib/copy';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
-import { sortItems, toDateInputValue, toDateTimeInputValue } from '@/lib/time';
+import {
+  formatDateTimeLabel,
+  sortItems,
+  toDateInputValue,
+  toDateTimeInputValue,
+} from '@/lib/time';
 import type {
-  CalendarConnection,
+  ActivityAction,
+  ActivityLog,
   Item,
   ItemType,
   ParseResult,
   Priority,
 } from '@/lib/types';
-
-type ComposerPanelProps = {
-  busy: boolean;
-  copy: typeof COPY.en;
-  locale: string;
-  onAnalyze: () => void;
-  onConnectGoogle: () => void;
-  onSignOut: () => void;
-  providerTokenAvailable: boolean;
-  session: Session;
-  setComposerText: (value: string) => void;
-  text: string;
-  connection: CalendarConnection | null;
-};
 
 type ConfirmationPanelProps = {
   busy: boolean;
@@ -57,18 +47,24 @@ type ConfirmationPanelProps = {
 
 type TodoRailProps = {
   copy: typeof COPY.en;
+  groupFilter: string;
   items: Item[];
   locale: string;
   onQuickStatus: (item: Item, status: string) => void;
   onSelectItem: (item: Item) => void;
+  priorityFilter: string;
   search: string;
   setGroupFilter: (value: string) => void;
   setPriorityFilter: (value: string) => void;
   setSearch: (value: string) => void;
   setStatusFilter: (value: string) => void;
   statusFilter: string;
-  groupFilter: string;
-  priorityFilter: string;
+};
+
+type HistoryTimelineProps = {
+  copy: typeof COPY.en;
+  locale: string;
+  logs: ActivityLog[];
 };
 
 function resolveLocale() {
@@ -81,45 +77,6 @@ function resolveLocale() {
 
 function resolveCopy(locale: string) {
   return locale.startsWith('zh') ? COPY.zh : COPY.en;
-}
-
-async function loadWorkspaceSnapshot(
-  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>,
-  userId: string
-) {
-  const [{ data: nextItems }, { data: nextConnection }] = await Promise.all([
-    supabase.from('items').select('*').order('created_at', { ascending: false }),
-    supabase.from('calendar_connections').select('*').eq('user_id', userId).maybeSingle(),
-  ]);
-
-  return {
-    connection: (nextConnection as CalendarConnection | null) ?? null,
-    items: sortItems((nextItems ?? []) as Item[]),
-  };
-}
-
-async function syncWorkspaceState(input: {
-  activeSession: Session | null;
-  setConnection: Dispatch<SetStateAction<CalendarConnection | null>>;
-  setItems: Dispatch<SetStateAction<Item[]>>;
-  setSelectedItem: Dispatch<SetStateAction<Item | null>>;
-  supabase: ReturnType<typeof getSupabaseClient>;
-}) {
-  const { activeSession, setConnection, setItems, setSelectedItem, supabase } = input;
-
-  if (!supabase || !activeSession?.user) {
-    setItems([]);
-    setConnection(null);
-    setSelectedItem(null);
-    return;
-  }
-
-  const snapshot = await loadWorkspaceSnapshot(supabase, activeSession.user.id);
-  setItems(snapshot.items);
-  setConnection(snapshot.connection);
-  setSelectedItem((current) =>
-    current ? snapshot.items.find((item) => item.id === current.id) ?? null : null
-  );
 }
 
 function toIsoOrNull(value: string | null | undefined) {
@@ -135,65 +92,44 @@ function toIsoOrNull(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function LandingScreen({
-  configured,
-  copy,
-  onSignIn,
-}: {
-  configured: boolean;
-  copy: typeof COPY.en;
-  onSignIn: () => void;
-}) {
-  return (
-    <main className="landing-shell">
-      <div className="landing-shell__glow" />
-      <section className="landing-card">
-        <p className="landing-card__eyebrow">AI planner / natural-language calendar</p>
-        <h1 className="landing-card__title">
-          Calendar intelligence without manual time surgery.
-        </h1>
-        <p className="landing-card__body">
-          Describe a task the way you think. The system decides whether it belongs on the
-          calendar or in the to-do rail, then drafts time, group, priority, and sync state
-          before you confirm.
-        </p>
-        <div className="landing-card__actions">
-          <button
-            className="planner-button"
-            disabled={!configured}
-            onClick={onSignIn}
-            type="button"
-          >
-            {copy.actions.signIn}
-          </button>
-          {!configured ? (
-            <p className="landing-card__hint">
-              Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` first.
-            </p>
-          ) : (
-            <p className="landing-card__hint">
-              Google login also grants the token used for one-way Calendar sync.
-            </p>
-          )}
-        </div>
-      </section>
-    </main>
-  );
+async function fetchWorkspace(
+  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>
+) {
+  const [{ data: itemsData, error: itemsError }, historyResponse] = await Promise.all([
+    supabase.from('items').select('*').order('created_at', { ascending: false }),
+    fetch('/api/history?limit=50'),
+  ]);
+
+  if (itemsError) {
+    throw itemsError;
+  }
+
+  const historyPayload = await historyResponse.json().catch(() => ({}));
+  if (!historyResponse.ok) {
+    throw new Error(historyPayload.error || 'Failed to load activity history.');
+  }
+
+  return {
+    items: sortItems((itemsData ?? []) as Item[]),
+    logs: (historyPayload.logs ?? []) as ActivityLog[],
+  };
 }
 
-function ComposerPanel({
+function IntakePanel({
   busy,
-  connection,
   copy,
   locale,
   onAnalyze,
-  onConnectGoogle,
-  onSignOut,
-  providerTokenAvailable,
-  session,
   setComposerText,
   text,
-}: ComposerPanelProps) {
+}: {
+  busy: boolean;
+  copy: typeof COPY.en;
+  locale: string;
+  onAnalyze: () => void;
+  setComposerText: (value: string) => void;
+  text: string;
+}) {
   return (
     <section className="planner-panel planner-panel--intake">
       <div className="planner-panel__header">
@@ -203,28 +139,24 @@ function ComposerPanel({
             {locale.startsWith('zh') ? '一句话录入你的安排' : 'Describe the plan once'}
           </h2>
         </div>
-        <button className="planner-button planner-button--ghost" onClick={onSignOut} type="button">
-          {copy.actions.signOut}
-        </button>
       </div>
 
       <div className="planner-stack">
         <div className="status-strip">
           <div>
-            <strong>{session.user.email}</strong>
-            <span>{locale.startsWith('zh') ? '当前工作区' : 'Current workspace'}</span>
+            <strong>{locale.startsWith('zh') ? '共享演示工作区' : 'Shared demo workspace'}</strong>
+            <span>
+              {locale.startsWith('zh')
+                ? '无需登录，所有访问者看到同一份事项和历史。'
+                : 'No sign-in. Everyone sees the same shared task and history data.'}
+            </span>
           </div>
           <div>
-            <strong>
-              {connection?.is_enabled
-                ? copy.badges.googleReady
-                : locale.startsWith('zh')
-                  ? '尚未连接 Google 日历'
-                  : 'Google Calendar not connected'}
-            </strong>
+            <strong>{locale.startsWith('zh') ? '自然语言优先' : 'Natural-language first'}</strong>
             <span>
-              {connection?.calendar_summary ??
-                (locale.startsWith('zh') ? '仅本地保存' : 'Saving locally')}
+              {locale.startsWith('zh')
+                ? '输入一句话，系统自动判断是日历事件还是普通待办。'
+                : 'Write one sentence and the app decides between calendar event and to-do.'}
             </span>
           </div>
         </div>
@@ -249,14 +181,6 @@ function ComposerPanel({
             type="button"
           >
             {copy.actions.analyze}
-          </button>
-          <button
-            className="planner-button planner-button--ghost"
-            disabled={!providerTokenAvailable || busy}
-            onClick={onConnectGoogle}
-            type="button"
-          >
-            {copy.actions.connectGoogle}
           </button>
         </div>
       </div>
@@ -560,7 +484,12 @@ function TodoRail({
                   {locale.startsWith('zh') ? '完成' : 'Complete'}
                 </button>
               ) : (
-                <button onClick={() => onQuickStatus(item, item.type === 'event' ? 'scheduled' : 'pending')} type="button">
+                <button
+                  onClick={() =>
+                    onQuickStatus(item, item.type === 'event' ? 'scheduled' : 'pending')
+                  }
+                  type="button"
+                >
                   {locale.startsWith('zh') ? '恢复' : 'Reopen'}
                 </button>
               )}
@@ -572,14 +501,79 @@ function TodoRail({
   );
 }
 
+function actionTone(action: ActivityAction) {
+  if (action === 'completed') {
+    return 'history-card__badge--completed';
+  }
+  if (action === 'deleted') {
+    return 'history-card__badge--deleted';
+  }
+  if (action === 'updated') {
+    return 'history-card__badge--updated';
+  }
+  return 'history-card__badge--created';
+}
+
+function HistoryTimeline({ copy, locale, logs }: HistoryTimelineProps) {
+  return (
+    <section className="planner-panel planner-panel--history">
+      <div className="planner-panel__header">
+        <div>
+          <p className="planner-panel__eyebrow">{copy.sections.history}</p>
+          <h2 className="planner-panel__title">
+            {locale.startsWith('zh') ? '最近的操作轨迹' : 'Recent activity'}
+          </h2>
+        </div>
+      </div>
+
+      <div className="history-list">
+        {logs.length === 0 ? (
+          <p className="todo-list__empty">
+            {locale.startsWith('zh') ? '还没有历史记录。' : 'No activity yet.'}
+          </p>
+        ) : null}
+        {logs.map((log) => (
+          <article className="history-card" key={log.id}>
+            <div className="history-card__meta">
+              <span className={`history-card__badge ${actionTone(log.action as ActivityAction)}`}>
+                {log.action}
+              </span>
+              <time>{formatDateTimeLabel(log.created_at, locale, DEFAULT_TIMEZONE)}</time>
+            </div>
+            <h3>{log.item_title}</h3>
+            <p>{log.summary}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EmptyWorkspace({ copy }: { copy: typeof COPY.en }) {
+  return (
+    <main className="landing-shell">
+      <div className="landing-shell__glow" />
+      <section className="landing-card">
+        <p className="landing-card__eyebrow">Orbit Planner / shared workspace</p>
+        <h1 className="landing-card__title">Supabase configuration required.</h1>
+        <p className="landing-card__body">
+          Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, then reload the app.
+        </p>
+        <div className="landing-card__actions">
+          <p className="landing-card__hint">{copy.actions.refresh}</p>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 export function PlannerApp() {
   const supabase = getSupabaseClient();
   const configured = isSupabaseConfigured();
   const [locale, setLocale] = useState(resolveLocale);
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
-  const [session, setSession] = useState<Session | null>(null);
   const [items, setItems] = useState<Item[]>([]);
-  const [connection, setConnection] = useState<CalendarConnection | null>(null);
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [composerText, setComposerText] = useState('');
   const [draft, setDraft] = useState<ParseResult | null>(null);
   const [parseMode, setParseMode] = useState<'ai' | 'fallback' | null>(null);
@@ -606,53 +600,33 @@ export function PlannerApp() {
     }
   }, []);
 
+  const loadWorkspace = useCallback(async () => {
+    if (!supabase) {
+      return;
+    }
+
+    const snapshot = await fetchWorkspace(supabase);
+    setItems(snapshot.items);
+    setLogs(snapshot.logs);
+    setSelectedItem((current) =>
+      current ? snapshot.items.find((item) => item.id === current.id) ?? null : null
+    );
+  }, [supabase]);
+
   useEffect(() => {
     if (!supabase) {
       return;
     }
 
-    void supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      startTransition(() => {
-        void syncWorkspaceState({
-          activeSession: data.session,
-          setConnection,
-          setItems,
-          setSelectedItem,
-          supabase,
-        });
-      });
+    void loadWorkspace().catch((error: unknown) => {
+      setMessage(error instanceof Error ? error.message : 'Failed to load workspace.');
     });
+  }, [loadWorkspace, supabase]);
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      startTransition(() => {
-        void syncWorkspaceState({
-          activeSession: nextSession,
-          setConnection,
-          setItems,
-          setSelectedItem,
-          supabase,
-        });
-      });
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
-
-  async function authedRequest(path: string, init?: RequestInit) {
-    if (!session?.access_token) {
-      throw new Error('Missing auth session.');
-    }
-
+  async function jsonRequest(path: string, init?: RequestInit) {
     const response = await fetch(path, {
       ...init,
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
         ...(init?.headers || {}),
       },
@@ -667,31 +641,6 @@ export function PlannerApp() {
     return payload;
   }
 
-  async function handleSignIn() {
-    if (!supabase) {
-      return;
-    }
-
-    await supabase.auth.signInWithOAuth({
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: 'openid email profile https://www.googleapis.com/auth/calendar',
-      },
-      provider: 'google',
-    });
-  }
-
-  async function handleSignOut() {
-    if (!supabase) {
-      return;
-    }
-
-    await supabase.auth.signOut();
-    setDraft(null);
-    setComposerText('');
-    setMessage(null);
-  }
-
   async function handleAnalyze() {
     if (!composerText.trim()) {
       return;
@@ -701,22 +650,14 @@ export function PlannerApp() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/nl/parse', {
+      const payload = await jsonRequest('/api/nl/parse', {
         body: JSON.stringify({
           locale,
           text: composerText,
           timezone,
         }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
         method: 'POST',
       });
-      const payload = await response.json();
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Failed to analyze request.');
-      }
 
       setDraft(payload.result as ParseResult);
       setParseMode(payload.mode as 'ai' | 'fallback');
@@ -736,19 +677,17 @@ export function PlannerApp() {
     setMessage(null);
 
     try {
-      await authedRequest('/api/items', {
+      await jsonRequest('/api/items', {
         body: JSON.stringify({
           ...draft,
           due_date: draft.is_all_day
             ? draft.due_date ?? toDateInputValue(draft.start_at)
             : draft.due_date,
           end_at: draft.is_all_day ? null : toIsoOrNull(draft.end_at),
-          google_access_token: session?.provider_token ?? null,
           parse_confidence: draft.confidence,
           source_text: composerText,
           start_at: draft.is_all_day ? null : toIsoOrNull(draft.start_at),
           status: draft.type === 'event' ? 'scheduled' : 'pending',
-          timezone,
         }),
         method: 'POST',
       });
@@ -759,57 +698,10 @@ export function PlannerApp() {
       setMessage(locale.startsWith('zh') ? '事项已创建。' : 'Item created.');
 
       startTransition(() => {
-        void syncWorkspaceState({
-          activeSession: session,
-          setConnection,
-          setItems,
-          setSelectedItem,
-          supabase,
-        });
+        void loadWorkspace();
       });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to create item.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleConnectGoogle() {
-    if (!session?.provider_token) {
-      setMessage(
-        locale.startsWith('zh')
-          ? '当前会话没有 Google provider token，请重新登录。'
-          : 'No Google provider token was found. Please sign in again.'
-      );
-      return;
-    }
-
-    setBusy(true);
-    setMessage(null);
-
-    try {
-      await authedRequest('/api/google-calendar/connect', {
-        body: JSON.stringify({
-          google_access_token: session.provider_token,
-        }),
-        method: 'POST',
-      });
-      setMessage(
-        locale.startsWith('zh')
-          ? 'Google Calendar 已连接。'
-          : 'Google Calendar is connected.'
-      );
-      startTransition(() => {
-        void syncWorkspaceState({
-          activeSession: session,
-          setConnection,
-          setItems,
-          setSelectedItem,
-          supabase,
-        });
-      });
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to connect Google Calendar.');
     } finally {
       setBusy(false);
     }
@@ -820,12 +712,11 @@ export function PlannerApp() {
     setMessage(null);
 
     try {
-      await authedRequest(`/api/items/${item.id}`, {
+      await jsonRequest(`/api/items/${item.id}`, {
         body: JSON.stringify({
-          due_date: item.is_all_day ? item.due_date : item.due_date,
+          due_date: item.due_date,
           end_at: item.is_all_day ? null : toIsoOrNull(item.end_at),
           estimated_minutes: item.estimated_minutes,
-          google_access_token: session?.provider_token ?? null,
           group_key: item.group_key,
           is_all_day: item.is_all_day,
           notes: item.notes,
@@ -834,21 +725,15 @@ export function PlannerApp() {
           source_text: item.source_text,
           start_at: item.is_all_day ? null : toIsoOrNull(item.start_at),
           status: item.status,
-          timezone,
           title: item.title,
           type: item.type,
         }),
         method: 'PATCH',
       });
+
       setMessage(locale.startsWith('zh') ? '事项已更新。' : 'Item updated.');
       startTransition(() => {
-        void syncWorkspaceState({
-          activeSession: session,
-          setConnection,
-          setItems,
-          setSelectedItem,
-          supabase,
-        });
+        void loadWorkspace();
       });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to update item.');
@@ -862,22 +747,13 @@ export function PlannerApp() {
     setMessage(null);
 
     try {
-      await authedRequest(`/api/items/${item.id}`, {
-        body: JSON.stringify({
-          google_access_token: session?.provider_token ?? null,
-        }),
+      await jsonRequest(`/api/items/${item.id}`, {
         method: 'DELETE',
       });
       setSelectedItem(null);
       setMessage(locale.startsWith('zh') ? '事项已删除。' : 'Item deleted.');
       startTransition(() => {
-        void syncWorkspaceState({
-          activeSession: session,
-          setConnection,
-          setItems,
-          setSelectedItem,
-          supabase,
-        });
+        void loadWorkspace();
       });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to delete item.');
@@ -918,10 +794,8 @@ export function PlannerApp() {
     })
   );
 
-  if (!configured || !session) {
-    return (
-      <LandingScreen configured={configured} copy={copy} onSignIn={() => void handleSignIn()} />
-    );
+  if (!configured || !supabase) {
+    return <EmptyWorkspace copy={copy} />;
   }
 
   return (
@@ -931,11 +805,11 @@ export function PlannerApp() {
 
       <section className="planner-hero">
         <div>
-          <p className="planner-hero__eyebrow">Task calendar management / AI intake</p>
+          <p className="planner-hero__eyebrow">Task calendar management / shared timeline</p>
           <h1 className="planner-hero__title">
             {locale.startsWith('zh')
-              ? '自然语言直接生成日历与待办'
-              : 'Natural language, straight into calendar and to-do views'}
+              ? '自然语言直接生成日历、待办与历史记录'
+              : 'Natural language into calendar, to-dos, and activity history'}
           </h1>
         </div>
         <div className="planner-hero__controls">
@@ -953,13 +827,7 @@ export function PlannerApp() {
             className="planner-button planner-button--ghost"
             onClick={() =>
               startTransition(() => {
-                void syncWorkspaceState({
-                  activeSession: session,
-                  setConnection,
-                  setItems,
-                  setSelectedItem,
-                  supabase,
-                });
+                void loadWorkspace();
               })
             }
             type="button"
@@ -972,16 +840,11 @@ export function PlannerApp() {
       {message ? <div className="planner-toast">{message}</div> : null}
 
       <section className="planner-grid planner-grid--top">
-        <ComposerPanel
+        <IntakePanel
           busy={busy}
-          connection={connection}
           copy={copy}
           locale={locale}
           onAnalyze={() => void handleAnalyze()}
-          onConnectGoogle={() => void handleConnectGoogle()}
-          onSignOut={() => void handleSignOut()}
-          providerTokenAvailable={Boolean(session.provider_token)}
-          session={session}
           setComposerText={setComposerText}
           text={composerText}
         />
@@ -1001,7 +864,7 @@ export function PlannerApp() {
         />
       </section>
 
-      <section className="planner-grid planner-grid--bottom">
+      <section className="planner-grid planner-grid--bottom planner-grid--triple">
         {calendarView === 'month' ? (
           <CalendarMonth
             focusDate={focusDate}
@@ -1034,6 +897,7 @@ export function PlannerApp() {
           setStatusFilter={setStatusFilter}
           statusFilter={statusFilter}
         />
+        <HistoryTimeline copy={copy} locale={locale} logs={logs} />
       </section>
 
       <ItemEditor

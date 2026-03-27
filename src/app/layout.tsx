@@ -22,7 +22,7 @@ const monoFont = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: 'Orbit Planner',
   description:
-    'AI-powered task calendar management with natural-language intake, monthly and weekly calendar views, and a synchronized to-do rail.',
+    'AI-powered task calendar management with natural-language intake, monthly and weekly calendar views, a filtered to-do rail, and an activity timeline.',
 };
 
 export default function RootLayout({

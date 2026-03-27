@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
-import {
-  createGoogleEvent,
-  deleteGoogleEvent,
-  updateGoogleEvent,
-} from '@/lib/google-calendar';
+import { buildDeletedLog, buildUpdatedLog } from '@/lib/activity';
 import { normalizeUpdatePayload } from '@/lib/item-payload';
-import { asApiError, getAuthenticatedServerClient } from '@/lib/server-auth';
-import type { CalendarConnection, Item } from '@/lib/types';
+import { getSupabaseClient } from '@/lib/supabase';
+import type { Item } from '@/lib/types';
 
 type RouteParams = {
   params: Promise<{
@@ -16,20 +12,20 @@ type RouteParams = {
 
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
-    const [{ id }, context, body] = await Promise.all([
-      params,
-      getAuthenticatedServerClient(request),
-      request.json(),
-    ]);
-    const googleAccessToken =
-      typeof body.google_access_token === 'string' ? body.google_access_token : null;
-    const timezone = typeof body.timezone === 'string' ? body.timezone : 'Asia/Shanghai';
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Supabase is not configured.' },
+        { status: 500 }
+      );
+    }
 
-    const { data: currentItem, error: currentItemError } = await context.supabase
+    const [{ id }, body] = await Promise.all([params, request.json()]);
+
+    const { data: currentItem, error: currentItemError } = await supabase
       .from('items')
       .select('*')
       .eq('id', id)
-      .eq('user_id', context.user.id)
       .single();
 
     if (currentItemError || !currentItem) {
@@ -39,11 +35,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const existingItem = currentItem as Item;
     const normalized = normalizeUpdatePayload(body, existingItem);
 
-    const { data: updatedData, error: updateError } = await context.supabase
+    const { data: updatedData, error: updateError } = await supabase
       .from('items')
       .update(normalized)
       .eq('id', id)
-      .eq('user_id', context.user.id)
       .select('*')
       .single();
 
@@ -52,86 +47,37 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     const updated = updatedData as Item;
+    const { error: logError } = await supabase
+      .from('activity_logs')
+      .insert(buildUpdatedLog(existingItem, updated));
 
-    if (updated.type !== 'event') {
-      return NextResponse.json({ item: updated });
+    if (logError) {
+      throw logError;
     }
 
-    const { data: connectionData } = await context.supabase
-      .from('calendar_connections')
-      .select('*')
-      .eq('user_id', context.user.id)
-      .maybeSingle();
-    const connection = (connectionData as CalendarConnection | null) ?? null;
-
-    if (!connection?.is_enabled || !googleAccessToken) {
-      return NextResponse.json({ item: updated });
-    }
-
-    try {
-      const syncResponse = updated.google_event_id
-        ? await updateGoogleEvent(
-            googleAccessToken,
-            connection.calendar_id,
-            updated.google_event_id,
-            updated,
-            timezone
-          )
-        : await createGoogleEvent(
-            googleAccessToken,
-            connection.calendar_id,
-            updated,
-            timezone
-          );
-
-      const { data: syncedItem } = await context.supabase
-        .from('items')
-        .update({
-          google_event_id: syncResponse.id,
-          sync_state: 'synced',
-        })
-        .eq('id', updated.id)
-        .eq('user_id', context.user.id)
-        .select('*')
-        .single();
-
-      return NextResponse.json({ item: (syncedItem as Item | null) ?? updated });
-    } catch {
-      const { data: failedItem } = await context.supabase
-        .from('items')
-        .update({
-          sync_state: 'needs_reconnect',
-        })
-        .eq('id', updated.id)
-        .eq('user_id', context.user.id)
-        .select('*')
-        .single();
-
-      return NextResponse.json({ item: (failedItem as Item | null) ?? updated });
-    }
+    return NextResponse.json({ item: updated });
   } catch (error) {
-    return NextResponse.json(
-      { error: asApiError(error, 'Failed to update item.') },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Failed to update item.';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
-    const [{ id }, context] = await Promise.all([
-      params,
-      getAuthenticatedServerClient(request),
-    ]);
-    const body = await request.json().catch(() => ({}));
-    const googleAccessToken =
-      typeof body.google_access_token === 'string' ? body.google_access_token : null;
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Supabase is not configured.' },
+        { status: 500 }
+      );
+    }
 
-    const { data: currentItem, error: currentItemError } = await context.supabase
+    const { id } = await params;
+
+    const { data: currentItem, error: currentItemError } = await supabase
       .from('items')
       .select('*')
       .eq('id', id)
-      .eq('user_id', context.user.id)
       .single();
 
     if (currentItemError || !currentItem) {
@@ -140,32 +86,15 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     const existingItem = currentItem as Item;
 
-    if (existingItem.type === 'event' && existingItem.google_event_id && googleAccessToken) {
-      const { data: connectionData } = await context.supabase
-        .from('calendar_connections')
-        .select('*')
-        .eq('user_id', context.user.id)
-        .maybeSingle();
-      const connection = (connectionData as CalendarConnection | null) ?? null;
+    const { error: logError } = await supabase
+      .from('activity_logs')
+      .insert(buildDeletedLog(existingItem));
 
-      if (connection?.is_enabled) {
-        try {
-          await deleteGoogleEvent(
-            googleAccessToken,
-            connection.calendar_id,
-            existingItem.google_event_id
-          );
-        } catch {
-          // Deleting the local item is still the safer default path.
-        }
-      }
+    if (logError) {
+      throw logError;
     }
 
-    const { error: deleteError } = await context.supabase
-      .from('items')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', context.user.id);
+    const { error: deleteError } = await supabase.from('items').delete().eq('id', id);
 
     if (deleteError) {
       throw deleteError;
@@ -173,9 +102,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json(
-      { error: asApiError(error, 'Failed to delete item.') },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Failed to delete item.';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
