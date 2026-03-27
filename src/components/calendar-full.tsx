@@ -30,6 +30,26 @@ function resolveStart(item: Item) {
   return item.start_at ?? item.created_at;
 }
 
+const HARMONIOUS_COLORS = [
+  '#ef4444', // Red
+  '#f97316', // Orange
+  '#f59e0b', // Amber
+  '#84cc16', // Lime
+  '#10b981', // Emerald
+  '#06b6d4', // Cyan
+  '#3b82f6', // Blue
+  '#6366f1', // Indigo
+  '#8b5cf6', // Violet
+  '#d946ef', // Fuchsia
+  '#f43f5e', // Rose
+];
+
+function getEventColor(item: Item) {
+  // 通过事项 ID 生成固定的 Hash，确保渲染出来的颜色不会在每次 React 更新时发生闪烁改变
+  const hash = String(item.id).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return HARMONIOUS_COLORS[hash % HARMONIOUS_COLORS.length];
+}
+
 function toCalendarEvent(item: Item): EventInput | null {
   const start = resolveStart(item);
 
@@ -37,7 +57,7 @@ function toCalendarEvent(item: Item): EventInput | null {
     return null;
   }
 
-  const accent = groupAccentMap.get(item.group_key) ?? '#14213d';
+  const accent = getEventColor(item);
 
   return {
     allDay: item.is_all_day,
