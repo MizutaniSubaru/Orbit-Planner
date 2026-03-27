@@ -10,7 +10,6 @@ import { GROUPS, getItemColor } from '@/lib/constants';
 import type { Item } from '@/lib/types';
 
 type CalendarFullProps = {
-  calendarView: 'month' | 'week';
   focusDate: Date;
   items: Item[];
   locale: string;
@@ -63,7 +62,6 @@ function sameDate(left: Date, right: Date) {
 }
 
 export function CalendarFull({
-  calendarView,
   focusDate,
   items,
   locale,
@@ -81,19 +79,6 @@ export function CalendarFull({
   );
 
   const isChinese = locale.startsWith('zh');
-  const viewName = calendarView === 'month' ? 'dayGridMonth' : 'timeGridWeek';
-
-  useEffect(() => {
-    const calendarApi = calendarRef.current?.getApi();
-
-    if (!calendarApi) {
-      return;
-    }
-
-    if (calendarApi.view.type !== viewName) {
-      calendarApi.changeView(viewName);
-    }
-  }, [viewName]);
 
   useEffect(() => {
     const calendarApi = calendarRef.current?.getApi();
@@ -108,14 +93,16 @@ export function CalendarFull({
     }
   }, [focusDate]);
 
-  function handleDatesSet(args: DatesSetArg) {
+  function handleDatesSet(_args: DatesSetArg) {
     const calendarApi = calendarRef.current?.getApi();
 
-    if (calendarApi) {
-      const activeDate = calendarApi.getDate();
-      if (!sameDate(activeDate, focusDate)) {
-        onFocusDateChange(activeDate);
-      }
+    if (!calendarApi) {
+      return;
+    }
+
+    const activeDate = calendarApi.getDate();
+    if (!sameDate(activeDate, focusDate)) {
+      onFocusDateChange(activeDate);
     }
   }
 
@@ -155,7 +142,7 @@ export function CalendarFull({
           }}
           height="auto"
           initialDate={focusDate}
-          initialView={viewName}
+          initialView="dayGridMonth"
           locale={isChinese ? 'zh-cn' : 'en'}
           locales={[zhCnLocale]}
           plugins={[dayGridPlugin, timeGridPlugin]}
