@@ -57,7 +57,9 @@ type TodoRailProps = {
   setGroupFilter: (value: string) => void;
   setPriorityFilter: (value: string) => void;
   setSearch: (value: string) => void;
+  setSortMode: (value: string) => void;
   setStatusFilter: (value: string) => void;
+  sortMode: string;
   statusFilter: string;
 };
 
@@ -413,7 +415,9 @@ function TodoRail({
   setGroupFilter,
   setPriorityFilter,
   setSearch,
+  setSortMode,
   setStatusFilter,
+  sortMode,
   statusFilter,
 }: TodoRailProps) {
   return (
@@ -459,6 +463,11 @@ function TodoRail({
             </option>
           ))}
         </select>
+        <select onChange={(event) => setSortMode(event.target.value)} value={sortMode}>
+          <option value="group">{locale.startsWith('zh') ? '按事件类型排序 (默认)' : 'Sort by group (default)'}</option>
+          <option value="priority">{locale.startsWith('zh') ? '按优先级排序' : 'Sort by priority'}</option>
+          <option value="time">{locale.startsWith('zh') ? '按时间排序' : 'Sort by time'}</option>
+        </select>
       </div>
 
       <div className="todo-list">
@@ -467,14 +476,29 @@ function TodoRail({
             {locale.startsWith('zh') ? '当前筛选条件下没有事项。' : 'No items match the current filter.'}
           </p>
         ) : null}
-        {items.map((item) => (
-          <article className="todo-card" key={item.id} style={{ '--item-color': getItemColor(item.id) } as React.CSSProperties}>
+        {items.map((item) => {
+          const groupAccent = getItemColor(item.group_key);
+          const groupLabel = locale.startsWith('zh') ? (GROUPS.find(g => g.key === item.group_key)?.labelZh ?? item.group_key) : item.group_key;
+
+          return (
+          <article className="todo-card" key={item.id} style={{ '--item-color': groupAccent } as React.CSSProperties}>
             <button className="todo-card__main" onClick={() => onSelectItem(item)} type="button">
-              <span className={`todo-card__dot`} style={{ backgroundColor: getItemColor(item.id) }} />
+              <span className={`todo-card__dot`} style={{ backgroundColor: groupAccent }} />
               <div>
                 <h3>{item.title}</h3>
-                <p>
-                  {item.type} · {item.group_key} · {item.status}
+                <p style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {item.type} 
+                  <span style={{ 
+                    border: `1px solid ${groupAccent}`, 
+                    color: groupAccent, 
+                    padding: '2px 8px', 
+                    borderRadius: '4px', 
+                    fontSize: '0.85em',
+                    lineHeight: 1
+                  }}>
+                    {groupLabel}
+                  </span>
+                  {item.status}
                 </p>
               </div>
             </button>
@@ -495,7 +519,8 @@ function TodoRail({
               )}
             </div>
           </article>
-        ))}
+        );
+        })}
       </div>
     </section>
   );
@@ -586,6 +611,7 @@ export function PlannerApp() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [groupFilter, setGroupFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [todoSortMode, setTodoSortMode] = useState('group');
 
   const deferredSearch = useDeferredValue(search);
   const copy = resolveCopy(locale);
@@ -770,29 +796,45 @@ export function PlannerApp() {
     (item) => item.type === 'event' || (item.is_all_day && Boolean(item.due_date))
   );
 
-  const filteredTodos = sortItems(
-    items.filter((item) => {
-      const haystack = `${item.title} ${item.notes ?? ''}`.toLowerCase();
+  const baseFilteredTodos = items.filter((item) => {
+    const haystack = `${item.title} ${item.notes ?? ''}`.toLowerCase();
 
-      if (deferredSearch.trim() && !haystack.includes(deferredSearch.toLowerCase())) {
-        return false;
-      }
+    if (deferredSearch.trim() && !haystack.includes(deferredSearch.toLowerCase())) {
+      return false;
+    }
 
-      if (statusFilter !== 'all' && item.status !== statusFilter) {
-        return false;
-      }
+    if (statusFilter !== 'all' && item.status !== statusFilter) {
+      return false;
+    }
 
-      if (groupFilter !== 'all' && item.group_key !== groupFilter) {
-        return false;
-      }
+    if (groupFilter !== 'all' && item.group_key !== groupFilter) {
+      return false;
+    }
 
-      if (priorityFilter !== 'all' && item.priority !== priorityFilter) {
-        return false;
-      }
+    if (priorityFilter !== 'all' && item.priority !== priorityFilter) {
+      return false;
+    }
 
-      return true;
-    })
-  );
+    return true;
+  });
+
+  const filteredTodos = sortItems(baseFilteredTodos).sort((a, b) => {
+    if (todoSortMode === 'group') {
+      const aOrder = GROUPS.find((g) => g.key === a.group_key)?.order ?? 99;
+      const bOrder = GROUPS.find((g) => g.key === b.group_key)?.order ?? 99;
+      return aOrder - bOrder;
+    }
+
+    if (todoSortMode === 'priority') {
+      const priorities = { high: 3, medium: 2, low: 1 };
+      const aPrio = priorities[a.priority as keyof typeof priorities] ?? 0;
+      const bPrio = priorities[b.priority as keyof typeof priorities] ?? 0;
+      return bPrio - aPrio;
+    }
+
+    // Default 'time' fallback (already sorted by time from sortItems)
+    return 0;
+  });
 
   if (!configured || !supabase) {
     return <EmptyWorkspace copy={copy} />;
@@ -885,7 +927,9 @@ export function PlannerApp() {
           setGroupFilter={setGroupFilter}
           setPriorityFilter={setPriorityFilter}
           setSearch={setSearch}
+          setSortMode={setTodoSortMode}
           setStatusFilter={setStatusFilter}
+          sortMode={todoSortMode}
           statusFilter={statusFilter}
         />
         <HistoryTimeline copy={copy} locale={locale} logs={logs} />

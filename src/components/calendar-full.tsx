@@ -37,7 +37,7 @@ function toCalendarEvent(item: Item): EventInput | null {
     return null;
   }
 
-  const accent = getItemColor(item.id);
+  const accent = getItemColor(item.group_key);
 
   return {
     allDay: item.is_all_day,
