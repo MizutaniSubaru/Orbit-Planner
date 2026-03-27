@@ -7,12 +7,12 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { CalendarMonth } from '@/components/calendar-month';
-import { CalendarWeek } from '@/components/calendar-week';
+import { CalendarFull } from '@/components/calendar-full';
 import { ItemEditor } from '@/components/item-editor';
 import {
   CALENDAR_VIEWS,
   DEFAULT_TIMEZONE,
+  getItemColor,
   GROUPS,
   PRIORITIES,
 } from '@/lib/constants';
@@ -468,9 +468,9 @@ function TodoRail({
           </p>
         ) : null}
         {items.map((item) => (
-          <article className="todo-card" key={item.id}>
+          <article className="todo-card" key={item.id} style={{ '--item-color': getItemColor(item.id) } as React.CSSProperties}>
             <button className="todo-card__main" onClick={() => onSelectItem(item)} type="button">
-              <span className={`todo-card__dot todo-card__dot--${item.priority}`} />
+              <span className={`todo-card__dot`} style={{ backgroundColor: getItemColor(item.id) }} />
               <div>
                 <h3>{item.title}</h3>
                 <p>
@@ -865,23 +865,14 @@ export function PlannerApp() {
       </section>
 
       <section className="planner-grid planner-grid--bottom planner-grid--triple">
-        {calendarView === 'month' ? (
-          <CalendarMonth
-            focusDate={focusDate}
-            items={calendarItems}
-            locale={locale}
-            onFocusDateChange={setFocusDate}
-            onSelectItem={setSelectedItem}
-          />
-        ) : (
-          <CalendarWeek
-            focusDate={focusDate}
-            items={calendarItems}
-            locale={locale}
-            onFocusDateChange={setFocusDate}
-            onSelectItem={setSelectedItem}
-          />
-        )}
+        <CalendarFull
+          calendarView={calendarView}
+          focusDate={focusDate}
+          items={calendarItems}
+          locale={locale}
+          onFocusDateChange={setFocusDate}
+          onSelectItem={setSelectedItem}
+        />
         <TodoRail
           copy={copy}
           groupFilter={groupFilter}
