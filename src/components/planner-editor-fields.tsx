@@ -1,6 +1,7 @@
 'use client';
 
 import { DateTimeWheelPicker } from '@/components/date-time-wheel-picker';
+import { MotionButton } from '@/components/ui/motion-button';
 import { COPY } from '@/lib/copy';
 import {
   EVENT_STATUSES,
@@ -182,14 +183,15 @@ export function PlannerEditorFields<T extends EditorFieldsValue>({
           <div className="field field--timing">
             <span>{copy.labels.end}</span>
             {timingVisibility.disableEnd ? (
-              <button
+              <MotionButton
                 aria-disabled="true"
                 className="wheel-picker__trigger wheel-picker__trigger--disabled"
                 disabled
+                motionPreset="subtle"
                 type="button"
               >
                 {isChinese ? '\u5168\u5929\u65f6\u95f4' : 'All-day timing'}
-              </button>
+              </MotionButton>
             ) : (
               <DateTimeWheelPicker
                 locale={locale}
@@ -205,7 +207,7 @@ export function PlannerEditorFields<T extends EditorFieldsValue>({
 
           <div className="field field--timing field--timing-toggle">
             <span>{copy.badges.allDay}</span>
-            <button
+            <MotionButton
               aria-pressed={value.is_all_day}
               className={[
                 'editor-toggle-button',
@@ -213,6 +215,7 @@ export function PlannerEditorFields<T extends EditorFieldsValue>({
               ]
                 .filter(Boolean)
                 .join(' ')}
+              motionPreset="subtle"
               onClick={() =>
                 onChange(applyAllDayChange(value as T & EditableTimingState, !value.is_all_day) as T)
               }
@@ -225,7 +228,7 @@ export function PlannerEditorFields<T extends EditorFieldsValue>({
                 : isChinese
                   ? '\u70b9\u51fb\u5f00\u542f'
                   : 'Turn on'}
-            </button>
+            </MotionButton>
           </div>
         </div>
       ) : null}

@@ -9,6 +9,9 @@
   --ember: #dd6948;
   --gold: #d5a44a;
   --line: rgba(20, 33, 61, 0.14);
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-speed: 220ms;
+  --motion-speed-fast: 160ms;
   --shadow: 0 28px 90px rgba(20, 33, 61, 0.14);
 }
 
@@ -150,16 +153,23 @@ button:disabled {
   color: #fff;
   background: linear-gradient(135deg, var(--ink) 0%, #243f72 100%);
   box-shadow: 0 10px 35px rgba(20, 33, 61, 0.18);
+  will-change: transform;
   transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    opacity 180ms ease;
+    box-shadow var(--motion-speed-fast) var(--motion-ease),
+    background-color var(--motion-speed-fast) var(--motion-ease),
+    border-color var(--motion-speed-fast) var(--motion-ease),
+    color var(--motion-speed-fast) var(--motion-ease),
+    opacity var(--motion-speed-fast) var(--motion-ease);
 }
 
 .planner-button:hover,
 .todo-card__actions button:hover {
-  transform: translateY(-1px);
   box-shadow: 0 14px 42px rgba(20, 33, 61, 0.24);
+}
+
+.planner-button:active,
+.todo-card__actions button:active {
+  box-shadow: 0 8px 24px rgba(20, 33, 61, 0.2);
 }
 
 .planner-button--ghost {
@@ -884,14 +894,16 @@ button:disabled {
   padding: 5px 10px;
   font-size: 0.82rem;
   font-weight: 600;
+  will-change: transform;
   transition:
-    transform 140ms ease,
-    box-shadow 140ms ease,
-    opacity 140ms ease;
+    box-shadow var(--motion-speed-fast) var(--motion-ease),
+    border-color var(--motion-speed-fast) var(--motion-ease),
+    background-color var(--motion-speed-fast) var(--motion-ease),
+    color var(--motion-speed-fast) var(--motion-ease),
+    opacity var(--motion-speed-fast) var(--motion-ease);
 }
 
 .wheel-picker__button:hover {
-  transform: translateY(-1px);
   box-shadow: 0 8px 18px rgba(79, 109, 168, 0.18);
 }
 
@@ -944,16 +956,15 @@ button:disabled {
   line-height: 1.2;
   text-align: center;
   white-space: nowrap;
+  will-change: transform;
   transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    transform 140ms ease,
-    background 140ms ease,
-    color 140ms ease;
+    border-color var(--motion-speed-fast) var(--motion-ease),
+    box-shadow var(--motion-speed-fast) var(--motion-ease),
+    background var(--motion-speed-fast) var(--motion-ease),
+    color var(--motion-speed-fast) var(--motion-ease);
 }
 
 .editor-toggle-button:hover {
-  transform: translateY(-1px);
   box-shadow: 0 10px 18px rgba(79, 109, 168, 0.16);
 }
 
@@ -1643,6 +1654,7 @@ button:disabled {
   text-align: left;
   color: inherit;
   background: transparent;
+  will-change: transform;
 }
 
 .search-result-card__meta {
@@ -1769,6 +1781,25 @@ button:disabled {
   background: rgba(255, 255, 255, 0.95);
   cursor: pointer;
   font: inherit;
+  will-change: transform;
+  transition:
+    border-color var(--motion-speed-fast) var(--motion-ease),
+    box-shadow var(--motion-speed-fast) var(--motion-ease),
+    background-color var(--motion-speed-fast) var(--motion-ease),
+    color var(--motion-speed-fast) var(--motion-ease),
+    opacity var(--motion-speed-fast) var(--motion-ease);
+}
+
+.history-bulk-actions__buttons button:hover:not(:disabled) {
+  border-color: rgba(79, 124, 255, 0.42);
+  background: rgba(240, 247, 255, 0.94);
+  box-shadow: 0 10px 20px rgba(79, 124, 255, 0.12);
+}
+
+.history-bulk-actions__buttons button:focus-visible {
+  outline: none;
+  border-color: rgba(79, 124, 255, 0.58);
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.16);
 }
 
 .history-bulk-actions__buttons button:disabled {
@@ -1832,31 +1863,32 @@ button:disabled {
   border-radius: 22px;
   padding: 14px;
   background: rgba(255, 255, 255, 0.75);
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
 
 .history-card--selected {
-  border-color: rgba(79, 124, 255, 0.58);
-  background: rgba(79, 124, 255, 0.08);
+  border-color: rgba(79, 124, 255, 0.74);
+  background: linear-gradient(140deg, rgba(158, 195, 255, 0.38) 0%, rgba(121, 169, 255, 0.28) 100%);
+  box-shadow: 0 0 0 1px rgba(79, 124, 255, 0.18), 0 8px 20px rgba(79, 124, 255, 0.14);
 }
 
-.history-card__check {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink-soft);
-  font-size: 0.82rem;
+.history-card--selectable {
+  cursor: pointer;
 }
 
-.history-card__check span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+.history-card--selectable:hover {
+  border-color: rgba(79, 124, 255, 0.48);
+  background: rgba(79, 124, 255, 0.1);
+}
+
+.history-card--selected.history-card--selectable:hover {
+  border-color: rgba(79, 124, 255, 0.8);
+  background: linear-gradient(140deg, rgba(165, 200, 255, 0.42) 0%, rgba(128, 174, 255, 0.32) 100%);
+}
+
+.history-card--selectable:focus-visible {
+  outline: 2px solid rgba(79, 124, 255, 0.45);
+  outline-offset: 2px;
 }
 
 .history-card h3 {
