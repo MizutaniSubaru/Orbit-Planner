@@ -912,9 +912,9 @@ function toTemporalParseResult(
     type === 'event' && temporalIntent.kind === 'specific_day_with_time'
       ? reconcileTimedEventFields(startAt, rawEndAt, estimatedMinutes)
       : {
-          endAt: rawEndAt,
-          estimatedMinutes,
-        };
+        endAt: rawEndAt,
+        estimatedMinutes,
+      };
   const needsConfirmation =
     temporalIntent.needsConfirmation ||
     shouldRequestConfirmationForTimedEvent(temporalIntent, text);
@@ -1076,9 +1076,9 @@ export function normalizeParseResult(
     type === 'event' && !isAllDay
       ? reconcileTimedEventFields(startAt, endAt, estimatedMinutes)
       : {
-          endAt,
-          estimatedMinutes,
-        };
+        endAt,
+        estimatedMinutes,
+      };
   endAt = timing.endAt;
   const location =
     typeof payload?.location === 'string'

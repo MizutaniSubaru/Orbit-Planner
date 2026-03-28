@@ -881,36 +881,45 @@ function HistoryTimeline({
               {locale.startsWith('zh') ? '还没有历史记录。' : 'No activity yet.'}
             </p>
           ) : null}
-          {logs.map((log) => (
-            <article
-              className={`history-card ${activeSelectedIds.includes(log.id) ? 'history-card--selected' : ''} ${log.action === 'updated' && !isUndoLog(log) ? 'history-card--compact' : ''}`}
-              key={log.id}
-            >
-              {selectMode ? (
-                <label className="history-card__check">
-                  <input
-                    checked={activeSelectedIds.includes(log.id)}
-                    disabled={busy}
-                    onChange={() => toggleSelect(log.id)}
-                    type="checkbox"
-                  />
-                  <span>{locale.startsWith('zh') ? '选择该日志' : 'Select log'}</span>
-                </label>
-              ) : null}
-              <div className="history-card__meta">
-                <span
-                  className={`history-card__badge ${actionTone(
-                    (isUndoLog(log) ? 'undo' : log.action) as ActivityAction
-                  )}`}
-                >
-                  {isUndoLog(log) ? 'undo' : log.action}
-                </span>
-                <time>{formatDateTimeLabel(log.created_at, locale, DEFAULT_TIMEZONE)}</time>
-              </div>
-              <h3>{log.item_title}</h3>
-              {log.action === 'updated' && !isUndoLog(log) ? null : <p>{log.summary}</p>}
-            </article>
-          ))}
+          {logs.map((log) => {
+            const isSelected = activeSelectedIds.includes(log.id);
+            const canSelect = selectMode && !busy;
+
+            return (
+              <article
+                aria-checked={selectMode ? isSelected : undefined}
+                aria-disabled={selectMode ? busy : undefined}
+                className={`history-card ${isSelected ? 'history-card--selected' : ''} ${log.action === 'updated' && !isUndoLog(log) ? 'history-card--compact' : ''} ${canSelect ? 'history-card--selectable' : ''}`}
+                key={log.id}
+                onClick={canSelect ? () => toggleSelect(log.id) : undefined}
+                onKeyDown={
+                  canSelect
+                    ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleSelect(log.id);
+                      }
+                    }
+                    : undefined
+                }
+                role={selectMode ? 'checkbox' : undefined}
+                tabIndex={canSelect ? 0 : undefined}
+              >
+                <div className="history-card__meta">
+                  <span
+                    className={`history-card__badge ${actionTone(
+                      (isUndoLog(log) ? 'undo' : log.action) as ActivityAction
+                    )}`}
+                  >
+                    {isUndoLog(log) ? 'undo' : log.action}
+                  </span>
+                  <time>{formatDateTimeLabel(log.created_at, locale, DEFAULT_TIMEZONE)}</time>
+                </div>
+                <h3>{log.item_title}</h3>
+                {log.action === 'updated' && !isUndoLog(log) ? null : <p>{log.summary}</p>}
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -1217,9 +1226,9 @@ export function PlannerApp() {
       current.map((draft) =>
         draft.id === draftId
           ? {
-              ...draft,
-              result: nextDraft,
-            }
+            ...draft,
+            result: nextDraft,
+          }
           : draft
       )
     );

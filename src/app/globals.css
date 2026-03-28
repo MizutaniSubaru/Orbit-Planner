@@ -1832,31 +1832,32 @@ button:disabled {
   border-radius: 22px;
   padding: 14px;
   background: rgba(255, 255, 255, 0.75);
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
 
 .history-card--selected {
-  border-color: rgba(79, 124, 255, 0.58);
-  background: rgba(79, 124, 255, 0.08);
+  border-color: rgba(79, 124, 255, 0.74);
+  background: linear-gradient(140deg, rgba(158, 195, 255, 0.38) 0%, rgba(121, 169, 255, 0.28) 100%);
+  box-shadow: 0 0 0 1px rgba(79, 124, 255, 0.18), 0 8px 20px rgba(79, 124, 255, 0.14);
 }
 
-.history-card__check {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink-soft);
-  font-size: 0.82rem;
+.history-card--selectable {
+  cursor: pointer;
 }
 
-.history-card__check span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+.history-card--selectable:hover {
+  border-color: rgba(79, 124, 255, 0.48);
+  background: rgba(79, 124, 255, 0.1);
+}
+
+.history-card--selected.history-card--selectable:hover {
+  border-color: rgba(79, 124, 255, 0.8);
+  background: linear-gradient(140deg, rgba(165, 200, 255, 0.42) 0%, rgba(128, 174, 255, 0.32) 100%);
+}
+
+.history-card--selectable:focus-visible {
+  outline: 2px solid rgba(79, 124, 255, 0.45);
+  outline-offset: 2px;
 }
 
 .history-card h3 {
