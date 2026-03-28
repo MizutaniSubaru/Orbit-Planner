@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MotionButton } from '@/components/ui/motion-button';
 import { generateWebcalUrl, downloadICalendar } from '@/lib/calendar-export';
 import type { Item } from '@/lib/types';
@@ -24,24 +24,24 @@ export function CalendarExportButton({ items, locale, userId }: CalendarExportBu
         ? navigator.language.toLowerCase().startsWith('zh')
         : true;
 
-  function clearCopiedTimer() {
+  const clearCopiedTimer = useCallback(() => {
     if (copiedTimerRef.current) {
       clearTimeout(copiedTimerRef.current);
       copiedTimerRef.current = null;
     }
-  }
+  }, []);
 
-  function closeMenu() {
+  const closeMenu = useCallback(() => {
     setShowMenu(false);
     clearCopiedTimer();
     setCopied(false);
-  }
+  }, [clearCopiedTimer]);
 
   useEffect(() => {
     return () => {
       clearCopiedTimer();
     };
-  }, []);
+  }, [clearCopiedTimer]);
 
   useEffect(() => {
     if (!showMenu) {
@@ -74,7 +74,7 @@ export function CalendarExportButton({ items, locale, userId }: CalendarExportBu
       window.removeEventListener('pointerdown', handleOutsidePointerDown);
       window.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [showMenu]);
+  }, [showMenu, closeMenu]);
 
   const handleDownload = () => {
     downloadICalendar(items, `calendar-${new Date().toISOString().split('T')[0]}.ics`);
