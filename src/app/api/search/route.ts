@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
-    createAiClient,
-    getAiConfig,
-    isRetryableModelError,
-    sanitizeAiJsonContent,
+    logAiJsonMetrics,
+    requestAiJson,
 } from '@/lib/ai-provider';
 import { DEFAULT_TIMEZONE } from '@/lib/constants';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -32,6 +30,10 @@ type RankPayload = {
     ordered_ids: string[];
     reason?: string;
 };
+
+const RERANK_CANDIDATE_LIMIT = 20;
+const RERANK_OUTPUT_LIMIT = 10;
+const RERANK_SKIP_SCORE_GAP = 6;
 
 function parseJson<T>(content: string | null | undefined) {
     if (!content) {
@@ -145,6 +147,29 @@ function inferRangeByRule(query: string, locale: string): DateRange | null {
 
 function isSummaryIntent(query: string) {
     return /我.*做了什么|发生了什么|what\s+did\s+i|what\s+happened|things\s+i\s+did/i.test(query);
+}
+
+function splitAiKeywordText(value: string) {
+    return Array.from(
+        new Set(
+            (value.toLowerCase().match(/[a-z0-9\u4e00-\u9fff]+/gi) ?? [])
+                .map((entry) => entry.trim())
+                .filter(Boolean)
+        )
+    );
+}
+
+function hasExplicitTimeHint(query: string) {
+    return [
+        /\b20\d{2}-\d{2}-\d{2}\b/i,
+        /\b(?:today|tomorrow|day after tomorrow|yesterday|tonight|this evening|last week|this week|next week|last month|this month|next month)\b/i,
+        /\b(?:(?:next|this)\s+)?(?:monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat|sunday|sun)\b/i,
+        /(?:\u4eca\u5929|\u660e\u5929|\u540e\u5929|\u6628\u5929|\u4eca\u665a|\u4eca\u591c|\u660e\u665a|\u4e0a\u5468|\u4e0b\u5468|\u8fd9\u5468|\u672c\u5468|\u4e0a\u4e2a?\u6708|\u4e0b\u4e2a?\u6708|\u8fd9\u4e2a?\u6708|\u672c\u6708)/u,
+        /(?:(?:\u4e0a\u5468|\u4e0b\u5468|\u8fd9\u5468|\u672c\u5468)\s*)?(?:\u661f\u671f|\u5468|\u793c\u62dc)\s*[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u65e5\u5929]/u,
+        /20\d{2}\s*\u5e74\s*\d{1,2}\s*\u6708\s*\d{1,2}\s*(?:\u65e5|\u53f7)?/u,
+        /\d{1,2}\s*\u6708\s*\d{1,2}\s*(?:\u65e5|\u53f7)?/u,
+        /\b\d{1,2}\s*\/\s*\d{1,2}\b/,
+    ].some((pattern) => pattern.test(query));
 }
 
 function extractKeywords(query: string) {
@@ -323,21 +348,72 @@ function scoreSkillHints(item: Item, query: string) {
     return score;
 }
 
-function serializeItemForRanking(item: Item, locale: string) {
+function serializeItemForRanking(item: Item) {
     const anchor = getItemAnchor(item) ?? item.created_at;
     return {
         anchor,
-        group: item.group_key,
         id: item.id,
         location: item.location,
         notes: item.notes,
-        status: item.status,
         title: item.title,
         type: item.type,
-        why: locale.startsWith('zh')
-            ? '候选项，基于关键词/时间规则召回'
-            : 'Candidate recalled by keyword/time rules',
     };
+}
+
+function shouldUseAiIntent(input: {
+    keywordList: string[];
+    query: string;
+    ruleRange: DateRange | null;
+}) {
+    const { keywordList, query, ruleRange } = input;
+
+    if (!query.trim()) {
+        return false;
+    }
+
+    if (ruleRange) {
+        return false;
+    }
+
+    if (isSummaryIntent(query)) {
+        return true;
+    }
+
+    return keywordList.length < 3;
+}
+
+function hasDirectTextMatch(item: Item, query: string) {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.length < 3) {
+        return false;
+    }
+
+    const title = (item.title ?? '').toLowerCase();
+    const notes = (item.notes ?? '').toLowerCase();
+
+    return (
+        title === normalizedQuery ||
+        title.includes(normalizedQuery) ||
+        notes.includes(normalizedQuery)
+    );
+}
+
+function getAiRerankSkipReason(scored: ScoredHit[], query: string) {
+    if (scored.length <= 1) {
+        return scored.length === 0 ? 'no_results' : 'single_result';
+    }
+
+    const topScore = scored[0]?.score ?? 0;
+    const secondScore = scored[1]?.score ?? 0;
+    if (topScore - secondScore >= RERANK_SKIP_SCORE_GAP) {
+        return 'strong_score_gap';
+    }
+
+    if (hasDirectTextMatch(scored[0].hit.item, query) && topScore > secondScore) {
+        return 'direct_match';
+    }
+
+    return null;
 }
 
 async function rankWithAiSkills(input: {
@@ -347,12 +423,48 @@ async function rankWithAiSkills(input: {
     timezone: string;
 }) {
     const { candidates, locale, query, timezone } = input;
-    const aiConfig = getAiConfig();
 
-    if (!aiConfig.apiKey || candidates.length === 0) {
+    if (candidates.length === 0) {
         return null;
     }
 
+    const payload = candidates
+        .slice(0, RERANK_CANDIDATE_LIMIT)
+        .map((entry) => serializeItemForRanking(entry.item));
+    const parsed = await requestAiJson<RankPayload>({
+        messages: [
+            {
+                role: 'system',
+                content: `
+You rerank schedule search candidates.
+Return one JSON object only: {"ordered_ids": string[]}.
+Include at most ${RERANK_OUTPUT_LIMIT} strong ids in best-first order.
+Prioritize the correct person, action/object match, semantic paraphrase, and the prefiltered time range.
+Locale=${locale}; Timezone=${timezone}.
+                `.trim(),
+            },
+            {
+                role: 'user',
+                content: JSON.stringify({
+                    candidates: payload,
+                    query,
+                }),
+            },
+        ],
+        parse: (content) => parseJson<RankPayload>(content),
+        task: 'search-rerank',
+    });
+
+    if (!parsed || !Array.isArray(parsed.ordered_ids)) {
+        return null;
+    }
+
+    const idSet = new Set(candidates.map((entry) => entry.item.id));
+    return parsed.ordered_ids
+        .filter((id) => typeof id === 'string' && idSet.has(id))
+        .slice(0, RERANK_OUTPUT_LIMIT);
+
+    /*
     const openai = createAiClient(aiConfig);
 
     const payload = candidates.slice(0, 80).map((entry) => serializeItemForRanking(entry.item, locale));
@@ -417,6 +529,8 @@ Timezone: ${timezone}
     return null;
 }
 
+*/
+}
 function reorderByIds(results: SearchHit[], orderedIds: string[]) {
     if (orderedIds.length === 0) {
         return results;
@@ -457,10 +571,21 @@ function normalizeAiIntent(payload: unknown): AiIntent {
     };
 
     const keywords = Array.isArray(source.keywords)
-        ? source.keywords.filter((entry): entry is string => typeof entry === 'string').map((entry) => entry.trim().toLowerCase()).filter(Boolean)
-        : [];
+        ? Array.from(
+            new Set(
+                source.keywords
+                    .flatMap((entry) => typeof entry === 'string' ? splitAiKeywordText(entry) : [])
+                    .filter(Boolean)
+            )
+        )
+        : typeof source.keywords === 'string'
+            ? splitAiKeywordText(source.keywords)
+            : [];
 
-    const type = source.type === 'event' || source.type === 'todo' ? source.type : 'all';
+    const type =
+        source.type === 'all' || source.type === 'event' || source.type === 'todo'
+            ? source.type
+            : 'all';
 
     return {
         date_end: typeof source.date_end === 'string' ? source.date_end : null,
@@ -476,56 +601,28 @@ async function inferIntentWithAi(input: {
     timezone: string;
 }) {
     const { locale, query, timezone } = input;
-    const aiConfig = getAiConfig();
+    const payload = await requestAiJson<unknown>({
+        messages: [
+            {
+                role: 'system',
+                content: `
+You parse search intent.
+Return one JSON object only with keys: keywords, type, date_start, date_end.
+- keywords: concise search terms as either a string array or a single string
+- type: all | event | todo
+- date_start/date_end: YYYY-MM-DD or null
+- Only set date_start/date_end when the user explicitly mentions a date, day, or time window.
+- For broad summary queries without an explicit time hint, keep date_start/date_end null so the app can search across full history.
+Locale=${locale}; Timezone=${timezone}.
+                `.trim(),
+            },
+            { role: 'user', content: query },
+        ],
+        parse: (content) => parseJson<unknown>(content),
+        task: 'search-intent',
+    });
 
-    if (!aiConfig.apiKey) {
-        return null;
-    }
-
-    const openai = createAiClient(aiConfig);
-
-    let lastError: unknown = null;
-
-    for (const candidate of aiConfig.candidateModels) {
-        try {
-            const response = await openai.chat.completions.create({
-                model: candidate,
-                messages: [
-                    {
-                        role: 'system',
-                        content: `
-You are an AI search intent parser.
-Return only JSON with keys: keywords, type, date_start, date_end.
-Rules:
-- keywords: array of concise search keywords.
-- type: one of all, event, todo.
-- date_start and date_end must be YYYY-MM-DD when inferable, otherwise null.
-- If query asks about broad summaries (e.g. what did I do last week), keep keywords empty and fill date range.
-- Respect locale ${locale} and timezone ${timezone}.
-            `.trim(),
-                    },
-                    { role: 'user', content: query },
-                ],
-                response_format: { type: 'json_object' },
-            });
-
-            const payload = parseJson<unknown>(
-                sanitizeAiJsonContent(response.choices[0]?.message?.content)
-            );
-            return normalizeAiIntent(payload);
-        } catch (error) {
-            lastError = error;
-            if (!isRetryableModelError(error)) {
-                throw error;
-            }
-        }
-    }
-
-    if (lastError) {
-        throw lastError;
-    }
-
-    return null;
+    return payload ? normalizeAiIntent(payload) : null;
 }
 
 function toTimeRangePayload(range: DateRange | null): SearchTimeRange | null {
@@ -662,12 +759,13 @@ export async function POST(request: Request) {
         let effectiveRange = ruleRange;
         let effectiveKeywords = keywordList;
         let fallbackToKeyword = false;
+        const allowAiDateRange = !ruleRange && hasExplicitTimeHint(query);
 
-        if (effectiveRange && isSummaryIntent(query)) {
+        if (isSummaryIntent(query)) {
             effectiveKeywords = [];
         }
 
-        if (mode === 'ai') {
+        if (mode === 'ai' && shouldUseAiIntent({ keywordList, query, ruleRange })) {
             try {
                 const aiIntent = await inferIntentWithAi({ locale, query, timezone });
                 if (!aiIntent) {
@@ -677,7 +775,7 @@ export async function POST(request: Request) {
 
                     const aiStart = parseYmd(aiIntent.date_start);
                     const aiEnd = parseYmd(aiIntent.date_end);
-                    if (aiStart && aiEnd && !ruleRange) {
+                    if (aiStart && aiEnd && allowAiDateRange) {
                         effectiveRange = {
                             end: endOfDay(aiEnd),
                             label: locale.startsWith('zh') ? 'AI 解析时间范围' : 'AI inferred time range',
@@ -687,13 +785,21 @@ export async function POST(request: Request) {
 
                     if (aiIntent.keywords.length > 0) {
                         effectiveKeywords = aiIntent.keywords;
-                    } else if (effectiveRange && isSummaryIntent(query)) {
+                    } else if (isSummaryIntent(query)) {
                         effectiveKeywords = [];
                     }
                 }
             } catch {
                 fallbackToKeyword = true;
             }
+        }
+
+        if (mode === 'ai' && !shouldUseAiIntent({ keywordList, query, ruleRange })) {
+            logAiJsonMetrics({
+                outcome: 'skip',
+                reason: ruleRange ? 'rule_range' : 'strong_keyword_signal',
+                task: 'search-intent',
+            });
         }
 
         const primaryScored = searchInMemory({
@@ -723,8 +829,9 @@ export async function POST(request: Request) {
         }
 
         let results = scored.map((entry) => entry.hit);
+        const rerankSkipReason = mode === 'ai' ? getAiRerankSkipReason(scored, query) : null;
 
-        if (mode === 'ai' && results.length > 0) {
+        if (mode === 'ai' && results.length > 0 && !rerankSkipReason) {
             try {
                 const orderedIds = await rankWithAiSkills({
                     candidates: results,
@@ -748,6 +855,14 @@ export async function POST(request: Request) {
             } catch {
                 fallbackToKeyword = true;
             }
+        }
+
+        if (mode === 'ai' && rerankSkipReason) {
+            logAiJsonMetrics({
+                outcome: 'skip',
+                reason: rerankSkipReason,
+                task: 'search-rerank',
+            });
         }
 
         const payload: SearchResponse = {

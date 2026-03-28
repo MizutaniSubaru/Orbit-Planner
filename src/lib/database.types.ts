@@ -129,6 +129,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      quotes: {
+        Row: {
+          anime_title: string;
+          created_at: string | null;
+          id: string;
+          is_active: boolean;
+          quote_text: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          anime_title: string;
+          created_at?: string | null;
+          id?: string;
+          is_active?: boolean;
+          quote_text: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          anime_title?: string;
+          created_at?: string | null;
+          id?: string;
+          is_active?: boolean;
+          quote_text?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
