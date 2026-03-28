@@ -680,6 +680,7 @@ button:disabled {
   max-width: none;
   font-size: clamp(1.12rem, 1.4vw, 1.5rem);
   line-height: 1.06;
+  transform: translateY(2px);
 }
 
 .quote-rotator__body {
@@ -692,6 +693,8 @@ button:disabled {
 }
 
 .quote-rotator__line {
+  position: relative;
+  top: -2px;
   margin: 0;
   text-align: center;
   color: var(--ink);
