@@ -76,3 +76,8 @@ export const MONTH_NAMES_ZH = [
 
 export const WEEKDAY_NAMES_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const WEEKDAY_NAMES_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+export function getItemColor(groupKey: string): string {
+  const group = GROUPS.find((g) => g.key === groupKey);
+  return group ? group.accent : '#7b6ef6';
+}
