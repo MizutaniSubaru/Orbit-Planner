@@ -7,6 +7,10 @@ import zhCnLocale from '@fullcalendar/core/locales/zh-cn';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
+import {
+  getTimeGridEventDurationMinutes,
+  shouldUseTitleOnlyTimeGridEvent,
+} from '@/lib/calendar-event-display';
 import { GROUPS } from '@/lib/constants';
 import { createLaunchOrigin } from '@/lib/launch-origin';
 import { formatEventTimeRange } from '@/lib/time';
@@ -22,6 +26,7 @@ type CalendarFullProps = {
 };
 
 type CalendarEventExtendedProps = {
+  durationMinutes: number | null;
   locationLabel: string;
   sourceItem: Item;
   timeLabel: string;
@@ -66,6 +71,9 @@ function toCalendarEvent(item: Item, locale: string, timezone: string): EventInp
     ],
     end: item.is_all_day ? undefined : item.end_at ?? undefined,
     extendedProps: {
+      durationMinutes: item.is_all_day
+        ? null
+        : getTimeGridEventDurationMinutes(item.start_at, item.end_at),
       locationLabel: item.location?.trim() ?? '',
       sourceItem: item,
       timeLabel: formatEventTimeRange({
@@ -138,6 +146,7 @@ function MonthEventCard({
 }
 
 type TimeGridEventCardProps = {
+  durationMinutes: number | null;
   locationLabel: string;
   timeLabel: string;
   title: string;
@@ -146,6 +155,7 @@ type TimeGridEventCardProps = {
 };
 
 function TimeGridEventCard({
+  durationMinutes,
   locationLabel,
   timeLabel,
   title,
@@ -156,6 +166,7 @@ function TimeGridEventCard({
   const measureRef = useRef<HTMLDivElement | null>(null);
   const measureTimeRef = useRef<HTMLSpanElement | null>(null);
   const [compact, setCompact] = useState(false);
+  const titleOnly = shouldUseTitleOnlyTimeGridEvent({ compact, durationMinutes });
   const locationText = locationLabel || '\u00a0';
 
   useLayoutEffect(() => {
@@ -244,14 +255,14 @@ function TimeGridEventCard({
   return (
     <div
       aria-label={tooltip}
-      className={`planner-calendar-week-event${compact ? ' planner-calendar-week-event--compact' : ''}`}
+      className={`planner-calendar-week-event${compact ? ' planner-calendar-week-event--compact' : ''}${titleOnly ? ' planner-calendar-week-event--title-only' : ''}`}
       title={tooltip}
     >
       <div ref={frameRef} className="planner-calendar-week-event__frame" style={{ background: backgroundColor, borderColor: borderColor, borderWidth: 1, borderStyle: 'solid' }}>
         <span aria-hidden="true" className="planner-calendar-week-event__accent" style={{ background: accentColor }} />
         <div className="planner-calendar-week-event__body">
           <span className="planner-calendar-week-event__title">{title}</span>
-          {compact ? null : (
+          {titleOnly ? null : (
             <span className="planner-calendar-week-event__meta-group">
               <span className="planner-calendar-week-event__meta planner-calendar-week-event__meta--time">
                 {timeLabel}
@@ -413,6 +424,7 @@ export function CalendarFull({
 
       return (
         <TimeGridEventCard
+          durationMinutes={eventProps.durationMinutes}
           locationLabel={eventProps.locationLabel}
           timeLabel={eventProps.timeLabel}
           title={title}
