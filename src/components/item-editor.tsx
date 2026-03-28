@@ -4,6 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useSyncExternalStore } from 
 import type { CSSProperties } from 'react';
 import { X } from 'lucide-react';
 import { PlannerEditorFields } from '@/components/planner-editor-fields';
+import { MotionButton } from '@/components/ui/motion-button';
 import { COPY } from '@/lib/copy';
 import { hasValidLaunchOrigin } from '@/lib/launch-origin';
 import type { Item, LaunchOrigin } from '@/lib/types';
@@ -106,12 +107,12 @@ function ItemEditorForm({
       />
 
       <div className="editor-actions">
-        <button className="planner-button planner-button--ghost" onClick={() => onDelete(item)} type="button">
+        <MotionButton className="planner-button planner-button--ghost" onClick={() => onDelete(item)} type="button">
           {copy.actions.delete}
-        </button>
-        <button className="planner-button" onClick={() => onSave(item)} type="button">
+        </MotionButton>
+        <MotionButton className="planner-button" onClick={() => onSave(item)} type="button">
           {copy.actions.save}
-        </button>
+        </MotionButton>
       </div>
     </>
   );
@@ -223,9 +224,10 @@ export function ItemEditor({
 
   return (
     <>
-      <button
+      <MotionButton
         aria-label={closeLabel}
         className="planner-modal__overlay"
+        motionPreset="overlay"
         onClick={onDismiss}
         ref={overlayRef}
         type="button"
@@ -244,14 +246,15 @@ export function ItemEditor({
                 {item.title}
               </h2>
             </div>
-            <button
+            <MotionButton
               aria-label={closeLabel}
               className="item-editor-modal__close"
+              motionPreset="subtle"
               onClick={onDismiss}
               type="button"
             >
               <X aria-hidden="true" size={18} />
-            </button>
+            </MotionButton>
           </div>
 
           <ItemEditorForm

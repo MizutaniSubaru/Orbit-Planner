@@ -12,6 +12,7 @@ import { CalendarFull } from '@/components/calendar-full';
 import { ItemEditor } from '@/components/item-editor';
 import { PlannerEditorFields } from '@/components/planner-editor-fields';
 import { QuoteRotator } from '@/components/quote-rotator';
+import { MotionButton } from '@/components/ui/motion-button';
 import { DEFAULT_TIMEZONE, GROUPS, PRIORITIES } from '@/lib/constants';
 import { COPY } from '@/lib/copy';
 import {
@@ -308,14 +309,14 @@ function ComposerPanel({
         />
 
         <div className="composer-actions composer-actions--end">
-          <button
+          <MotionButton
             className="planner-button"
             disabled={!text.trim() || busy}
             onClick={onAnalyze}
             type="button"
           >
             {copy.actions.analyze}
-          </button>
+          </MotionButton>
         </div>
       </div>
     </section>
@@ -380,9 +381,10 @@ function ConfirmationModal({
 
   return (
     <>
-      <button
+      <MotionButton
         aria-label="Close confirmation dialog"
         className="planner-modal__overlay is-visible"
+        motionPreset="overlay"
         onClick={onDismiss}
         type="button"
       />
@@ -422,17 +424,18 @@ function ConfirmationModal({
                 const active = draft.id === activeDraft.id;
 
                 return (
-                  <button
+                  <MotionButton
                     aria-selected={active}
                     className={`draft-tab ${active ? 'is-active' : ''}`}
                     key={draft.id}
+                    motionPreset="subtle"
                     onClick={() => onActivateDraft(draft.id)}
                     role="tab"
                     type="button"
                   >
                     <span>{buildDraftTabLabel(index + 1, locale)}</span>
                     <small>{shortTitle(draft.result.title)}</small>
-                  </button>
+                  </MotionButton>
                 );
               })}
             </div>
@@ -453,22 +456,22 @@ function ConfirmationModal({
           ) : null}
 
           <div className="editor-actions">
-            <button className="planner-button planner-button--ghost" onClick={onDismiss} type="button">
+            <MotionButton className="planner-button planner-button--ghost" onClick={onDismiss} type="button">
               {copy.actions.close}
-            </button>
+            </MotionButton>
             {isMulti ? (
               <>
-                <button className="planner-button planner-button--ghost" disabled={busy} onClick={onCreateCurrent} type="button">
+                <MotionButton className="planner-button planner-button--ghost" disabled={busy} onClick={onCreateCurrent} type="button">
                   {isChinese ? '\u521b\u5efa\u5f53\u524d\u65e5\u7a0b' : 'Create current'}
-                </button>
-                <button className="planner-button" disabled={busy} onClick={onCreateAll} type="button">
+                </MotionButton>
+                <MotionButton className="planner-button" disabled={busy} onClick={onCreateAll} type="button">
                   {isChinese ? '\u521b\u5efa\u5168\u90e8\u65e5\u7a0b' : 'Create all'}
-                </button>
+                </MotionButton>
               </>
             ) : (
-              <button className="planner-button" disabled={busy} onClick={onCreateCurrent} type="button">
+              <MotionButton className="planner-button" disabled={busy} onClick={onCreateCurrent} type="button">
                 {copy.actions.create}
-              </button>
+              </MotionButton>
             )}
           </div>
         </section>
@@ -518,9 +521,10 @@ function TodoFilterModal({
 
   return (
     <>
-      <button
+      <MotionButton
         aria-label={copy.actions.close}
         className="planner-modal__overlay is-visible"
+        motionPreset="overlay"
         onClick={onDismiss}
         type="button"
       />
@@ -551,16 +555,17 @@ function TodoFilterModal({
                     ['priority', copy.todoFilters.byPriority],
                   ] as const
                 ).map(([mode, label]) => (
-                  <button
+                  <MotionButton
                     aria-pressed={draftSortMode === mode}
                     className={`editor-toggle-button todo-filter-modal__option${draftSortMode === mode ? ' is-active' : ''
                       }`}
                     key={mode}
+                    motionPreset="subtle"
                     onClick={() => setDraftSortMode(mode)}
                     type="button"
                   >
                     {label}
-                  </button>
+                  </MotionButton>
                 ))}
               </div>
             </section>
@@ -573,11 +578,12 @@ function TodoFilterModal({
                     const isActive = draftSelectedGroupKeys.includes(group.key);
 
                     return (
-                      <button
+                      <MotionButton
                         aria-pressed={isActive}
                         className={`editor-toggle-button todo-filter-modal__option${isActive ? ' is-active' : ''
                           }`}
                         key={group.key}
+                        motionPreset="subtle"
                         onClick={() =>
                           setDraftSelectedGroupKeys((current) =>
                             toggleSelection(current, group.key)
@@ -586,7 +592,7 @@ function TodoFilterModal({
                         type="button"
                       >
                         {locale.startsWith('zh') ? group.labelZh : group.labelEn}
-                      </button>
+                      </MotionButton>
                     );
                   })}
                 </div>
@@ -601,11 +607,12 @@ function TodoFilterModal({
                     const isActive = draftSelectedPriorities.includes(priority);
 
                     return (
-                      <button
+                      <MotionButton
                         aria-pressed={isActive}
                         className={`editor-toggle-button todo-filter-modal__option${isActive ? ' is-active' : ''
                           }`}
                         key={priority}
+                        motionPreset="subtle"
                         onClick={() =>
                           setDraftSelectedPriorities((current) =>
                             toggleSelection(current, priority)
@@ -614,7 +621,7 @@ function TodoFilterModal({
                         type="button"
                       >
                         {priority}
-                      </button>
+                      </MotionButton>
                     );
                   })}
                 </div>
@@ -623,23 +630,23 @@ function TodoFilterModal({
           </div>
 
           <div className="editor-actions todo-filter-modal__actions">
-            <button
+            <MotionButton
               className="planner-button planner-button--ghost"
               onClick={handleReset}
               type="button"
             >
               {copy.actions.resetFilters}
-            </button>
-            <button
+            </MotionButton>
+            <MotionButton
               className="planner-button planner-button--ghost"
               onClick={onDismiss}
               type="button"
             >
               {copy.actions.close}
-            </button>
-            <button className="planner-button" onClick={handleApply} type="button">
+            </MotionButton>
+            <MotionButton className="planner-button" onClick={handleApply} type="button">
               {copy.actions.apply}
-            </button>
+            </MotionButton>
           </div>
         </section>
       </div>
@@ -668,13 +675,13 @@ function TodoRail({
           <p className="planner-panel__eyebrow">{copy.sections.todo}</p>
           <h2 className="planner-panel__title">{copy.todoFilters.title}</h2>
         </div>
-        <button
+        <MotionButton
           className="planner-button planner-button--ghost todo-rail__filter-button"
           onClick={onOpenFilter}
           type="button"
         >
           {copy.actions.filter}
-        </button>
+        </MotionButton>
       </div>
 
       {isFilterOpen ? (
@@ -699,8 +706,9 @@ function TodoRail({
           ) : null}
           {items.map((item) => (
             <article className="todo-card" key={item.id}>
-              <button
+              <MotionButton
                 className="todo-card__main"
+                motionPreset="card"
                 onClick={(event) =>
                   onSelectItem(item, createLaunchOrigin(event.currentTarget.getBoundingClientRect()))
                 }
@@ -713,21 +721,21 @@ function TodoRail({
                     {item.type} · {item.group_key} · {item.status}
                   </p>
                 </div>
-              </button>
+              </MotionButton>
               <div className="todo-card__actions">
                 {item.status !== 'completed' ? (
-                  <button onClick={() => onQuickStatus(item, 'completed')} type="button">
+                  <MotionButton onClick={() => onQuickStatus(item, 'completed')} type="button">
                     {locale.startsWith('zh') ? '完成' : 'Complete'}
-                  </button>
+                  </MotionButton>
                 ) : (
-                  <button
+                  <MotionButton
                     onClick={() =>
                       onQuickStatus(item, item.type === 'event' ? 'scheduled' : 'pending')
                     }
                     type="button"
                   >
                     {locale.startsWith('zh') ? '恢复' : 'Reopen'}
-                  </button>
+                  </MotionButton>
                 )}
               </div>
             </article>
@@ -802,7 +810,7 @@ function HistoryTimeline({
           </h2>
         </div>
         <div className="history-toolbar">
-          <button
+          <MotionButton
             className="planner-button planner-button--ghost history-toolbar__toggle"
             disabled={busy || logs.length === 0}
             onClick={() => {
@@ -821,7 +829,7 @@ function HistoryTimeline({
               : locale.startsWith('zh')
                 ? '选择'
                 : 'Select'}
-          </button>
+          </MotionButton>
         </div>
       </div>
 
@@ -834,7 +842,7 @@ function HistoryTimeline({
                 : `${activeSelectedIds.length} selected`}
             </p>
             <div className="history-bulk-actions__buttons">
-              <button
+              <MotionButton
                 disabled={busy || logs.length === 0}
                 onClick={() =>
                   setSelectedIds(allSelected ? [] : logs.map((log) => log.id))
@@ -848,8 +856,8 @@ function HistoryTimeline({
                   : locale.startsWith('zh')
                     ? '全选'
                     : 'Select all'}
-              </button>
-              <button
+              </MotionButton>
+              <MotionButton
                 disabled={busy || activeSelectedIds.length === 0}
                 onClick={() =>
                   void onUndoLogs(activeSelectedIds).then(() => {
@@ -859,8 +867,8 @@ function HistoryTimeline({
                 type="button"
               >
                 {locale.startsWith('zh') ? '撤销' : 'Undo'}
-              </button>
-              <button
+              </MotionButton>
+              <MotionButton
                 disabled={busy || activeSelectedIds.length === 0}
                 onClick={() =>
                   void onDeleteLogs(activeSelectedIds).then(() => {
@@ -870,7 +878,7 @@ function HistoryTimeline({
                 type="button"
               >
                 {locale.startsWith('zh') ? '删除' : 'Delete'}
-              </button>
+              </MotionButton>
             </div>
           </div>
         ) : null}
@@ -980,7 +988,7 @@ function SearchResultsPanel({
         </label>
 
         <div className="search-panel__actions">
-          <button className="planner-button" disabled={!query.trim() || searching} onClick={onSearch} type="button">
+          <MotionButton className="planner-button" disabled={!query.trim() || searching} onClick={onSearch} type="button">
             {searching
               ? isChinese
                 ? '搜索中...'
@@ -988,10 +996,10 @@ function SearchResultsPanel({
               : isChinese
                 ? '搜索'
                 : 'Search'}
-          </button>
-          <button className="planner-button planner-button--ghost" onClick={onClear} type="button">
+          </MotionButton>
+          <MotionButton className="planner-button planner-button--ghost" onClick={onClear} type="button">
             {isChinese ? '清空' : 'Clear'}
-          </button>
+          </MotionButton>
         </div>
       </div>
 
@@ -1025,7 +1033,7 @@ function SearchResultsPanel({
 
         {results.map((result) => (
           <article className="search-result-card" key={result.item.id}>
-            <button className="search-result-card__main" onClick={() => onSelectItem(result.item)} type="button">
+            <MotionButton className="search-result-card__main" motionPreset="card" onClick={() => onSelectItem(result.item)} type="button">
               <div>
                 <div className="search-result-card__meta">
                   <span className="planner-badge">{result.item.type}</span>
@@ -1041,7 +1049,7 @@ function SearchResultsPanel({
                 ) : null}
                 <p>{result.reason}</p>
               </div>
-            </button>
+            </MotionButton>
           </article>
         ))}
       </div>
@@ -1633,7 +1641,7 @@ export function PlannerApp() {
           <h1 className="planner-hero__title">Orbit Planner</h1>
         </div>
         <div className="planner-hero__controls">
-          <button
+          <MotionButton
             className="planner-button planner-button--ghost"
             onClick={() =>
               startTransition(() => {
@@ -1643,7 +1651,7 @@ export function PlannerApp() {
             type="button"
           >
             {copy.actions.refresh}
-          </button>
+          </MotionButton>
         </div>
       </section>
 

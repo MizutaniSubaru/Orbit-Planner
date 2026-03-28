@@ -6,6 +6,7 @@ import {
   type WheelPickerOption,
 } from '@ncdai/react-wheel-picker';
 import { useEffect, useMemo, useState } from 'react';
+import { MotionButton } from '@/components/ui/motion-button';
 
 type DateTimeWheelPickerProps = {
   dateOnly?: boolean;
@@ -290,20 +291,21 @@ export function DateTimeWheelPicker({
   return (
     <div className="wheel-picker">
       <div className="wheel-picker__triggers">
-        <button className="wheel-picker__trigger" onClick={openDatePanel} type="button">
+        <MotionButton className="wheel-picker__trigger" motionPreset="subtle" onClick={openDatePanel} type="button">
           {copy.pickDate} · {`${committedYear}-${pad(committedMonth)}-${pad(committedDay)}`}
-        </button>
+        </MotionButton>
         {dateOnly ? null : (
-          <button className="wheel-picker__trigger" onClick={openTimePanel} type="button">
+          <MotionButton className="wheel-picker__trigger" motionPreset="subtle" onClick={openTimePanel} type="button">
             {copy.pickTime} · {`${pad(committedHour)}:${pad(committedMinute)}`}
-          </button>
+          </MotionButton>
         )}
       </div>
 
       {openPanel ? (
-        <button
+        <MotionButton
           aria-label="Close picker"
           className="wheel-picker__overlay"
+          motionPreset="overlay"
           onClick={dismissPanel}
           type="button"
         />
@@ -347,20 +349,22 @@ export function DateTimeWheelPicker({
               />
             </WheelPickerWrapper>
             <div className="wheel-picker__actions">
-              <button
+              <MotionButton
                 className="wheel-picker__button wheel-picker__button--cancel"
+                motionPreset="subtle"
                 onClick={cancelDateSelection}
                 type="button"
               >
                 {copy.cancel}
-              </button>
-              <button
+              </MotionButton>
+              <MotionButton
                 className="wheel-picker__button wheel-picker__button--confirm"
+                motionPreset="subtle"
                 onClick={confirmDateSelection}
                 type="button"
               >
                 {copy.confirm}
-              </button>
+              </MotionButton>
             </div>
           </div>
         </div>
@@ -395,20 +399,22 @@ export function DateTimeWheelPicker({
               />
             </WheelPickerWrapper>
             <div className="wheel-picker__actions">
-              <button
+              <MotionButton
                 className="wheel-picker__button wheel-picker__button--cancel"
+                motionPreset="subtle"
                 onClick={cancelTimeSelection}
                 type="button"
               >
                 {copy.cancel}
-              </button>
-              <button
+              </MotionButton>
+              <MotionButton
                 className="wheel-picker__button wheel-picker__button--confirm"
+                motionPreset="subtle"
                 onClick={confirmTimeSelection}
                 type="button"
               >
                 {copy.confirm}
-              </button>
+              </MotionButton>
             </div>
           </div>
         </div>
