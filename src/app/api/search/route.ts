@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
-import {
-    createAiClient,
-    getAiConfig,
-    isRetryableModelError,
-    sanitizeAiJsonContent,
-} from '@/lib/ai-provider';
+import { OpenAI } from 'openai';
+import type { APIError } from 'openai/error';
 import { DEFAULT_TIMEZONE } from '@/lib/constants';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Item, SearchHit, SearchMode, SearchResponse, SearchTimeRange } from '@/lib/types';
@@ -43,6 +39,15 @@ function parseJson<T>(content: string | null | undefined) {
     } catch {
         return null;
     }
+}
+
+function getAiConfig() {
+    const apiKey = process.env.OPENAI_API_KEY || process.env.KIMI_API_KEY;
+    const baseURL =
+        process.env.OPENAI_BASE_URL || process.env.KIMI_BASE_URL || 'https://api.moonshot.cn/v1';
+    const model = process.env.OPENAI_MODEL || process.env.KIMI_MODEL || 'kimi-k2.5';
+
+    return { apiKey, baseURL, model };
 }
 
 function startOfDay(date: Date) {
@@ -347,18 +352,21 @@ async function rankWithAiSkills(input: {
     timezone: string;
 }) {
     const { candidates, locale, query, timezone } = input;
-    const aiConfig = getAiConfig();
+    const { apiKey, baseURL, model } = getAiConfig();
 
-    if (!aiConfig.apiKey || candidates.length === 0) {
+    if (!apiKey || candidates.length === 0) {
         return null;
     }
 
-    const openai = createAiClient(aiConfig);
+    const openai = new OpenAI({ apiKey, baseURL });
+    const candidateModels = [model, 'kimi-k2.5', 'moonshot-v1-8k'].filter(
+        (value, index, array) => value && array.indexOf(value) === index
+    );
 
     const payload = candidates.slice(0, 80).map((entry) => serializeItemForRanking(entry.item, locale));
     let lastError: unknown = null;
 
-    for (const candidate of aiConfig.candidateModels) {
+    for (const candidate of candidateModels) {
         try {
             const response = await openai.chat.completions.create({
                 model: candidate,
@@ -391,9 +399,7 @@ Timezone: ${timezone}
                 response_format: { type: 'json_object' },
             });
 
-            const parsed = parseJson<RankPayload>(
-                sanitizeAiJsonContent(response.choices[0]?.message?.content)
-            );
+            const parsed = parseJson<RankPayload>(response.choices[0]?.message?.content);
             if (!parsed || !Array.isArray(parsed.ordered_ids)) {
                 return null;
             }
@@ -404,7 +410,12 @@ Timezone: ${timezone}
             return orderedIds;
         } catch (error) {
             lastError = error;
-            if (!isRetryableModelError(error)) {
+            const apiError = error as APIError;
+            const shouldRetry =
+                apiError?.status === 404 ||
+                /not found the model|permission denied/i.test(apiError?.message || '');
+
+            if (!shouldRetry) {
                 throw error;
             }
         }
@@ -476,17 +487,20 @@ async function inferIntentWithAi(input: {
     timezone: string;
 }) {
     const { locale, query, timezone } = input;
-    const aiConfig = getAiConfig();
+    const { apiKey, baseURL, model } = getAiConfig();
 
-    if (!aiConfig.apiKey) {
+    if (!apiKey) {
         return null;
     }
 
-    const openai = createAiClient(aiConfig);
+    const openai = new OpenAI({ apiKey, baseURL });
+    const candidateModels = [model, 'kimi-k2.5', 'moonshot-v1-8k'].filter(
+        (value, index, array) => value && array.indexOf(value) === index
+    );
 
     let lastError: unknown = null;
 
-    for (const candidate of aiConfig.candidateModels) {
+    for (const candidate of candidateModels) {
         try {
             const response = await openai.chat.completions.create({
                 model: candidate,
@@ -509,13 +523,16 @@ Rules:
                 response_format: { type: 'json_object' },
             });
 
-            const payload = parseJson<unknown>(
-                sanitizeAiJsonContent(response.choices[0]?.message?.content)
-            );
+            const payload = parseJson<unknown>(response.choices[0]?.message?.content);
             return normalizeAiIntent(payload);
         } catch (error) {
             lastError = error;
-            if (!isRetryableModelError(error)) {
+            const apiError = error as APIError;
+            const shouldRetry =
+                apiError?.status === 404 ||
+                /not found the model|permission denied/i.test(apiError?.message || '');
+
+            if (!shouldRetry) {
                 throw error;
             }
         }
