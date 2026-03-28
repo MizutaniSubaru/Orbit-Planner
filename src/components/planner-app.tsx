@@ -4,8 +4,10 @@ import {
   startTransition,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
+import type { CSSProperties } from 'react';
 import { CalendarFull } from '@/components/calendar-full';
 import { ItemEditor } from '@/components/item-editor';
 import { PlannerEditorFields } from '@/components/planner-editor-fields';
@@ -417,15 +419,6 @@ function TodoFilterModal({
   const [draftSelectedPriorities, setDraftSelectedPriorities] = useState<Priority[]>(selectedPriorities);
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
-
-  useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         onDismiss();
@@ -488,9 +481,8 @@ function TodoFilterModal({
                 ).map(([mode, label]) => (
                   <button
                     aria-pressed={draftSortMode === mode}
-                    className={`editor-toggle-button todo-filter-modal__option${
-                      draftSortMode === mode ? ' is-active' : ''
-                    }`}
+                    className={`editor-toggle-button todo-filter-modal__option${draftSortMode === mode ? ' is-active' : ''
+                      }`}
                     key={mode}
                     onClick={() => setDraftSortMode(mode)}
                     type="button"
@@ -511,9 +503,8 @@ function TodoFilterModal({
                     return (
                       <button
                         aria-pressed={isActive}
-                        className={`editor-toggle-button todo-filter-modal__option${
-                          isActive ? ' is-active' : ''
-                        }`}
+                        className={`editor-toggle-button todo-filter-modal__option${isActive ? ' is-active' : ''
+                          }`}
                         key={group.key}
                         onClick={() =>
                           setDraftSelectedGroupKeys((current) =>
@@ -540,9 +531,8 @@ function TodoFilterModal({
                     return (
                       <button
                         aria-pressed={isActive}
-                        className={`editor-toggle-button todo-filter-modal__option${
-                          isActive ? ' is-active' : ''
-                        }`}
+                        className={`editor-toggle-button todo-filter-modal__option${isActive ? ' is-active' : ''
+                          }`}
                         key={priority}
                         onClick={() =>
                           setDraftSelectedPriorities((current) =>
@@ -628,47 +618,49 @@ function TodoRail({
         />
       ) : null}
 
-      <div className="todo-list">
-        {items.length === 0 ? (
-          <p className="todo-list__empty">
-            {locale.startsWith('zh') ? '当前筛选条件下没有事项。' : 'No items match the current filter.'}
-          </p>
-        ) : null}
-        {items.map((item) => (
-          <article className="todo-card" key={item.id}>
-            <button
-              className="todo-card__main"
-              onClick={(event) =>
-                onSelectItem(item, createLaunchOrigin(event.currentTarget.getBoundingClientRect()))
-              }
-              type="button"
-            >
-              <span className={`todo-card__dot todo-card__dot--${item.priority}`} />
-              <div>
-                <h3>{item.title}</h3>
-                <p>
-                  {item.type} · {item.group_key} · {item.status}
-                </p>
+      <div className="todo-scroll">
+        <div className="todo-list">
+          {items.length === 0 ? (
+            <p className="todo-list__empty">
+              {locale.startsWith('zh') ? '当前筛选条件下没有事项。' : 'No items match the current filter.'}
+            </p>
+          ) : null}
+          {items.map((item) => (
+            <article className="todo-card" key={item.id}>
+              <button
+                className="todo-card__main"
+                onClick={(event) =>
+                  onSelectItem(item, createLaunchOrigin(event.currentTarget.getBoundingClientRect()))
+                }
+                type="button"
+              >
+                <span className={`todo-card__dot todo-card__dot--${item.priority}`} />
+                <div>
+                  <h3>{item.title}</h3>
+                  <p>
+                    {item.type} · {item.group_key} · {item.status}
+                  </p>
+                </div>
+              </button>
+              <div className="todo-card__actions">
+                {item.status !== 'completed' ? (
+                  <button onClick={() => onQuickStatus(item, 'completed')} type="button">
+                    {locale.startsWith('zh') ? '完成' : 'Complete'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() =>
+                      onQuickStatus(item, item.type === 'event' ? 'scheduled' : 'pending')
+                    }
+                    type="button"
+                  >
+                    {locale.startsWith('zh') ? '恢复' : 'Reopen'}
+                  </button>
+                )}
               </div>
-            </button>
-            <div className="todo-card__actions">
-              {item.status !== 'completed' ? (
-                <button onClick={() => onQuickStatus(item, 'completed')} type="button">
-                  {locale.startsWith('zh') ? '完成' : 'Complete'}
-                </button>
-              ) : (
-                <button
-                  onClick={() =>
-                    onQuickStatus(item, item.type === 'event' ? 'scheduled' : 'pending')
-                  }
-                  type="button"
-                >
-                  {locale.startsWith('zh') ? '恢复' : 'Reopen'}
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -761,91 +753,93 @@ function HistoryTimeline({
         </div>
       </div>
 
-      {selectMode ? (
-        <div className="history-bulk-actions">
-          <p>
-            {locale.startsWith('zh')
-              ? `已选择 ${activeSelectedIds.length} 条日志`
-              : `${activeSelectedIds.length} selected`}
-          </p>
-          <div className="history-bulk-actions__buttons">
-            <button
-              disabled={busy || logs.length === 0}
-              onClick={() =>
-                setSelectedIds(allSelected ? [] : logs.map((log) => log.id))
-              }
-              type="button"
-            >
-              {allSelected
-                ? locale.startsWith('zh')
-                  ? '取消全选'
-                  : 'Clear all'
-                : locale.startsWith('zh')
-                  ? '全选'
-                  : 'Select all'}
-            </button>
-            <button
-              disabled={busy || activeSelectedIds.length === 0}
-              onClick={() =>
-                void onUndoLogs(activeSelectedIds).then(() => {
-                  exitSelectMode();
-                })
-              }
-              type="button"
-            >
-              {locale.startsWith('zh') ? '撤销' : 'Undo'}
-            </button>
-            <button
-              disabled={busy || activeSelectedIds.length === 0}
-              onClick={() =>
-                void onDeleteLogs(activeSelectedIds).then(() => {
-                  exitSelectMode();
-                })
-              }
-              type="button"
-            >
-              {locale.startsWith('zh') ? '删除' : 'Delete'}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="history-list">
-        {logs.length === 0 ? (
-          <p className="todo-list__empty">
-            {locale.startsWith('zh') ? '还没有历史记录。' : 'No activity yet.'}
-          </p>
-        ) : null}
-        {logs.map((log) => (
-          <article
-            className={`history-card ${activeSelectedIds.includes(log.id) ? 'history-card--selected' : ''} ${log.action === 'updated' && !isUndoLog(log) ? 'history-card--compact' : ''}`}
-            key={log.id}
-          >
-            {selectMode ? (
-              <label className="history-card__check">
-                <input
-                  checked={activeSelectedIds.includes(log.id)}
-                  disabled={busy}
-                  onChange={() => toggleSelect(log.id)}
-                  type="checkbox"
-                />
-                <span>{locale.startsWith('zh') ? '选择该日志' : 'Select log'}</span>
-              </label>
-            ) : null}
-            <div className="history-card__meta">
-              <span
-                className={`history-card__badge ${actionTone(
-                  (isUndoLog(log) ? 'undo' : log.action) as ActivityAction
-                )}`}
+      <div className="history-scroll">
+        {selectMode ? (
+          <div className="history-bulk-actions">
+            <p>
+              {locale.startsWith('zh')
+                ? `已选择 ${activeSelectedIds.length} 条日志`
+                : `${activeSelectedIds.length} selected`}
+            </p>
+            <div className="history-bulk-actions__buttons">
+              <button
+                disabled={busy || logs.length === 0}
+                onClick={() =>
+                  setSelectedIds(allSelected ? [] : logs.map((log) => log.id))
+                }
+                type="button"
               >
-                {isUndoLog(log) ? 'undo' : log.action}
-              </span>
-              <time>{formatDateTimeLabel(log.created_at, locale, DEFAULT_TIMEZONE)}</time>
+                {allSelected
+                  ? locale.startsWith('zh')
+                    ? '取消全选'
+                    : 'Clear all'
+                  : locale.startsWith('zh')
+                    ? '全选'
+                    : 'Select all'}
+              </button>
+              <button
+                disabled={busy || activeSelectedIds.length === 0}
+                onClick={() =>
+                  void onUndoLogs(activeSelectedIds).then(() => {
+                    exitSelectMode();
+                  })
+                }
+                type="button"
+              >
+                {locale.startsWith('zh') ? '撤销' : 'Undo'}
+              </button>
+              <button
+                disabled={busy || activeSelectedIds.length === 0}
+                onClick={() =>
+                  void onDeleteLogs(activeSelectedIds).then(() => {
+                    exitSelectMode();
+                  })
+                }
+                type="button"
+              >
+                {locale.startsWith('zh') ? '删除' : 'Delete'}
+              </button>
             </div>
-            <h3>{log.item_title}</h3>
-            {log.action === 'updated' && !isUndoLog(log) ? null : <p>{log.summary}</p>}
-          </article>
-        ))}
+          </div>
+        ) : null}
+
+        <div className="history-list">
+          {logs.length === 0 ? (
+            <p className="todo-list__empty">
+              {locale.startsWith('zh') ? '还没有历史记录。' : 'No activity yet.'}
+            </p>
+          ) : null}
+          {logs.map((log) => (
+            <article
+              className={`history-card ${activeSelectedIds.includes(log.id) ? 'history-card--selected' : ''} ${log.action === 'updated' && !isUndoLog(log) ? 'history-card--compact' : ''}`}
+              key={log.id}
+            >
+              {selectMode ? (
+                <label className="history-card__check">
+                  <input
+                    checked={activeSelectedIds.includes(log.id)}
+                    disabled={busy}
+                    onChange={() => toggleSelect(log.id)}
+                    type="checkbox"
+                  />
+                  <span>{locale.startsWith('zh') ? '选择该日志' : 'Select log'}</span>
+                </label>
+              ) : null}
+              <div className="history-card__meta">
+                <span
+                  className={`history-card__badge ${actionTone(
+                    (isUndoLog(log) ? 'undo' : log.action) as ActivityAction
+                  )}`}
+                >
+                  {isUndoLog(log) ? 'undo' : log.action}
+                </span>
+                <time>{formatDateTimeLabel(log.created_at, locale, DEFAULT_TIMEZONE)}</time>
+              </div>
+              <h3>{log.item_title}</h3>
+              {log.action === 'updated' && !isUndoLog(log) ? null : <p>{log.summary}</p>}
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -1023,6 +1017,8 @@ export function PlannerApp() {
   const [searchResults, setSearchResults] = useState<SearchHit[]>([]);
   const [searchRangeLabel, setSearchRangeLabel] = useState<string | null>(null);
   const [searchFallback, setSearchFallback] = useState(false);
+  const [schedulePanelHeight, setSchedulePanelHeight] = useState<number | null>(null);
+  const bottomGridRef = useRef<HTMLElement | null>(null);
 
   const copy = resolveCopy(locale);
 
@@ -1058,6 +1054,43 @@ export function PlannerApp() {
       setMessage(error instanceof Error ? error.message : 'Failed to load workspace.');
     });
   }, [loadWorkspace, supabase]);
+
+  useEffect(() => {
+    const grid = bottomGridRef.current;
+    if (!grid || typeof window === 'undefined') {
+      return;
+    }
+
+    const schedulePanel = grid.querySelector('.planner-panel--calendar');
+    if (!(schedulePanel instanceof HTMLElement)) {
+      return;
+    }
+
+    let frameId: number | null = null;
+
+    const syncScheduleHeight = () => {
+      const nextHeight = Math.ceil(schedulePanel.getBoundingClientRect().height);
+      setSchedulePanelHeight((current) => (current === nextHeight ? current : nextHeight));
+    };
+
+    syncScheduleHeight();
+
+    const observer = new ResizeObserver(() => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      frameId = window.requestAnimationFrame(syncScheduleHeight);
+    });
+
+    observer.observe(schedulePanel);
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      observer.disconnect();
+    };
+  }, [configured]);
 
   const closeConfirmation = useCallback(() => {
     setDraft(null);
@@ -1374,6 +1407,10 @@ export function PlannerApp() {
     sortMode: todoSortMode,
   });
 
+  const bottomGridStyle = (schedulePanelHeight
+    ? { '--schedule-panel-height': `${schedulePanelHeight}px` }
+    : undefined) as CSSProperties | undefined;
+
   if (!configured || !supabase) {
     return <EmptyWorkspace copy={copy} />;
   }
@@ -1469,7 +1506,11 @@ export function PlannerApp() {
         onSave={(item) => void handleSaveItemAndClose(item)}
       />
 
-      <section className="planner-grid planner-grid--bottom planner-grid--triple">
+      <section
+        className="planner-grid planner-grid--bottom planner-grid--triple planner-grid--sync-schedule-height"
+        ref={bottomGridRef}
+        style={bottomGridStyle}
+      >
         <CalendarFull
           focusDate={focusDate}
           items={calendarItems}
