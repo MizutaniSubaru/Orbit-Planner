@@ -1,7 +1,7 @@
 import type { Item } from './types';
 
 /**
- * 生成 iCalendar (.ics) 格式的日历数据
+ * Generate iCalendar (.ics) data for planner items.
  */
 export function generateICalendar(items: Item[], calendarName: string = 'My Calendar'): string {
   const lines: string[] = [
@@ -18,7 +18,9 @@ export function generateICalendar(items: Item[], calendarName: string = 'My Cale
 
   items.forEach((item) => {
     const start = item.start_at ?? item.due_date ?? item.created_at;
-    if (!start) return;
+    if (!start) {
+      return;
+    }
 
     const dtStart = formatICalDate(new Date(start), item.is_all_day);
     const dtEnd = item.end_at
@@ -45,40 +47,32 @@ export function generateICalendar(items: Item[], calendarName: string = 'My Cale
 }
 
 /**
- * 格式化日期为 iCalendar 格式
+ * Format a date into iCalendar-compatible output.
  */
 function formatICalDate(date: Date, isAllDay: boolean): string {
   if (isAllDay) {
     return date.toISOString().split('T')[0].replace(/-/g, '');
   }
+
   return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 }
 
 /**
- * 转义 iCalendar 文本
+ * Escape iCalendar text fields.
  */
 function escapeICalText(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 }
 
 /**
- * 生成可用于点击订阅的 Webcal URl
- */
-export function generateWebcalUrl(userId?: string): string {
-  if (typeof window === 'undefined') return '';
-  const currentUrl = window.location.origin;
-  const webcalBase = currentUrl.replace(/^https?:\/\//, 'webcal://');
-  return `${webcalBase}/api/calendar/subscribe${userId ? `?userId=${userId}` : ''}`;
-}
-
-/**
- * 下载 .ics 文件
+ * Download planner items as an .ics file.
  */
 export function downloadICalendar(items: Item[], filename: string = 'calendar.ics') {
   const icsContent = generateICalendar(items);
   const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
+
   link.href = url;
   link.download = filename;
   document.body.appendChild(link);
