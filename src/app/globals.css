@@ -1932,25 +1932,51 @@ button:disabled {
   background: rgba(255, 255, 255, 0.82);
 }
 
-.history-bulk-actions p {
+.history-bulk-actions__summary {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   margin: 0;
   color: var(--ink-soft);
   font-size: 0.86rem;
 }
 
+.history-bulk-actions__summary--stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.history-bulk-actions__summary-line,
+.history-bulk-actions__summary-count,
+.history-bulk-actions__summary-label {
+  white-space: nowrap;
+}
+
+.history-bulk-actions__summary-count {
+  font-variant-numeric: tabular-nums;
+}
+
 .history-bulk-actions__buttons {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 8px;
 }
 
 .history-bulk-actions__buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.95);
   cursor: pointer;
+  flex: 0 0 auto;
   font: inherit;
+  text-align: center;
+  white-space: normal;
   will-change: transform;
   transition:
     border-color var(--motion-speed-fast) var(--motion-ease),
@@ -1975,6 +2001,22 @@ button:disabled {
 .history-bulk-actions__buttons button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.history-bulk-actions__button-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.08;
+}
+
+.history-bulk-actions__button-label--single {
+  white-space: nowrap;
+}
+
+.history-bulk-actions__button-label--stacked {
+  flex-direction: column;
 }
 
 .todo-card {

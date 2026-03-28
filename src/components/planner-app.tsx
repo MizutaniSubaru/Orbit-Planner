@@ -836,10 +836,20 @@ function HistoryTimeline({
       <div className="history-scroll">
         {selectMode ? (
           <div className="history-bulk-actions">
-            <p>
-              {locale.startsWith('zh')
-                ? `已选择 ${activeSelectedIds.length} 条日志`
-                : `${activeSelectedIds.length} selected`}
+            <p
+              className={`history-bulk-actions__summary${locale.startsWith('zh') ? ' history-bulk-actions__summary--stacked' : ''}`}
+            >
+              {locale.startsWith('zh') ? (
+                <>
+                  <span className="history-bulk-actions__summary-line">已选择</span>
+                  <span className="history-bulk-actions__summary-line">{activeSelectedIds.length} 条日志</span>
+                </>
+              ) : (
+                <>
+                  <span className="history-bulk-actions__summary-count">{activeSelectedIds.length}</span>
+                  <span className="history-bulk-actions__summary-label">Selected</span>
+                </>
+              )}
             </p>
             <div className="history-bulk-actions__buttons">
               <MotionButton
@@ -849,13 +859,16 @@ function HistoryTimeline({
                 }
                 type="button"
               >
-                {allSelected
-                  ? locale.startsWith('zh')
-                    ? '取消全选'
-                    : 'Clear all'
-                  : locale.startsWith('zh')
-                    ? '全选'
-                    : 'Select all'}
+                {locale.startsWith('zh') ? (
+                  <span className="history-bulk-actions__button-label history-bulk-actions__button-label--single">
+                    {allSelected ? '取消全选' : '全选'}
+                  </span>
+                ) : (
+                  <span className="history-bulk-actions__button-label history-bulk-actions__button-label--stacked">
+                    <span>{allSelected ? 'Clear' : 'Select'}</span>
+                    <span>all</span>
+                  </span>
+                )}
               </MotionButton>
               <MotionButton
                 disabled={busy || activeSelectedIds.length === 0}
@@ -866,7 +879,9 @@ function HistoryTimeline({
                 }
                 type="button"
               >
-                {locale.startsWith('zh') ? '撤销' : 'Undo'}
+                <span className="history-bulk-actions__button-label history-bulk-actions__button-label--single">
+                  {locale.startsWith('zh') ? '撤销' : 'Undo'}
+                </span>
               </MotionButton>
               <MotionButton
                 disabled={busy || activeSelectedIds.length === 0}
@@ -877,7 +892,16 @@ function HistoryTimeline({
                 }
                 type="button"
               >
-                {locale.startsWith('zh') ? '删除' : 'Delete'}
+                {locale.startsWith('zh') ? (
+                  <span className="history-bulk-actions__button-label history-bulk-actions__button-label--single">
+                    删除日志
+                  </span>
+                ) : (
+                  <span className="history-bulk-actions__button-label history-bulk-actions__button-label--stacked">
+                    <span>Delete</span>
+                    <span>Logs</span>
+                  </span>
+                )}
               </MotionButton>
             </div>
           </div>
