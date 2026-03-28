@@ -87,10 +87,14 @@ export type SearchResponse = {
 export type LocaleCopy = {
   actions: {
     analyze: string;
+    apply: string;
     cancel: string;
+    close: string;
     create: string;
     delete: string;
+    filter: string;
     refresh: string;
+    resetFilters: string;
     save: string;
   };
   badges: {
@@ -120,5 +124,11 @@ export type LocaleCopy = {
     history: string;
     intake: string;
     todo: string;
+  };
+  todoFilters: {
+    byGroup: string;
+    byPriority: string;
+    byTime: string;
+    title: string;
   };
 };
