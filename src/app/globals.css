@@ -1459,6 +1459,14 @@ button:disabled {
   display: none;
 }
 
+.planner-calendar-week-event--title-only .planner-calendar-week-event__body {
+  justify-content: center;
+}
+
+.planner-calendar-week-event--title-only .planner-calendar-week-event__meta-group {
+  display: none;
+}
+
 .planner-fullcalendar .fc .planner-fullcalendar__event.fc-timegrid-event .planner-calendar-week-event {
   min-height: 100%;
 }
