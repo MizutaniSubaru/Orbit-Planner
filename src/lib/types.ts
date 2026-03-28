@@ -8,6 +8,7 @@ import type {
 
 export type Item = Database['public']['Tables']['items']['Row'];
 export type ActivityLog = Database['public']['Tables']['activity_logs']['Row'];
+export type Quote = Database['public']['Tables']['quotes']['Row'];
 export type GroupKey = (typeof GROUPS)[number]['key'];
 export type Priority = (typeof PRIORITIES)[number];
 export type TodoStatus = (typeof TODO_STATUSES)[number];
@@ -82,6 +83,17 @@ export type SearchResponse = {
   query: string;
   results: SearchHit[];
   timeRange: SearchTimeRange | null;
+};
+
+export type QuoteView = {
+  anime: string;
+  id: string;
+  quote: string;
+};
+
+export type QuotesResponse = {
+  error?: string;
+  quotes: QuoteView[];
 };
 
 export type LocaleCopy = {

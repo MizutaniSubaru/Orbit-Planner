@@ -1,10 +1,9 @@
 create extension if not exists pgcrypto;
-
 drop table if exists public.calendar_connections cascade;
 drop table if exists public.activity_logs cascade;
 drop table if exists public.items cascade;
 drop table if exists public.groups cascade;
-
+drop table if exists public.quotes cascade;
 create table public.groups (
   key text primary key,
   label_en text not null,
@@ -12,15 +11,12 @@ create table public.groups (
   accent text not null,
   order_index integer not null default 0
 );
-
 insert into public.groups (key, label_en, label_zh, accent, order_index)
-values
-  ('study', 'Study', '学习', '#4f7cff', 1),
+values ('study', 'Study', '学习', '#4f7cff', 1),
   ('work', 'Work', '工作', '#ff6b4a', 2),
   ('life', 'Life', '生活', '#39b07a', 3),
   ('health', 'Health', '健康', '#f5a623', 4),
   ('other', 'Other', '其他', '#7b6ef6', 5);
-
 create table public.items (
   id uuid primary key default gen_random_uuid(),
   type text not null check (type in ('todo', 'event')),
@@ -41,10 +37,11 @@ create table public.items (
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
-
 create table public.activity_logs (
   id uuid primary key default gen_random_uuid(),
-  action text not null check (action in ('created', 'updated', 'completed', 'deleted')),
+  action text not null check (
+    action in ('created', 'updated', 'completed', 'deleted')
+  ),
   item_id text,
   item_title text not null,
   item_type text not null check (item_type in ('todo', 'event')),
@@ -52,46 +49,38 @@ create table public.activity_logs (
   details_json jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now())
 );
-
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = timezone('utc', now());
-  return new;
+create table public.quotes (
+  id uuid primary key default gen_random_uuid(),
+  quote_text text not null,
+  anime_title text not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+create index quotes_is_active_created_idx on public.quotes (is_active, created_at desc);
+create or replace function public.set_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = timezone('utc', now());
+return new;
 end;
 $$;
-
-create trigger items_set_updated_at
-before update on public.items
-for each row execute function public.set_updated_at();
-
+create trigger items_set_updated_at before
+update on public.items for each row execute function public.set_updated_at();
+create trigger quotes_set_updated_at before
+update on public.quotes for each row execute function public.set_updated_at();
 alter table public.groups enable row level security;
 alter table public.items enable row level security;
 alter table public.activity_logs enable row level security;
-
-create policy "groups_readable_by_anon"
-on public.groups
-for select
-to anon, authenticated
-using (true);
-
-create policy "items_manageable_by_anon"
-on public.items
-for all
-to anon, authenticated
-using (true)
-with check (true);
-
-create policy "activity_logs_readable_by_anon"
-on public.activity_logs
-for select
-to anon, authenticated
-using (true);
-
-create policy "activity_logs_insertable_by_anon"
-on public.activity_logs
-for insert
-to anon, authenticated
-with check (true);
+alter table public.quotes enable row level security;
+create policy "groups_readable_by_anon" on public.groups for
+select to anon,
+  authenticated using (true);
+create policy "items_manageable_by_anon" on public.items for all to anon,
+authenticated using (true) with check (true);
+create policy "activity_logs_readable_by_anon" on public.activity_logs for
+select to anon,
+  authenticated using (true);
+create policy "activity_logs_insertable_by_anon" on public.activity_logs for
+insert to anon,
+  authenticated with check (true);
+create policy "quotes_readable_by_anon" on public.quotes for
+select to anon,
+  authenticated using (is_active = true);

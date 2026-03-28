@@ -10,6 +10,7 @@ import {
 import { CalendarFull } from '@/components/calendar-full';
 import { DateTimeWheelPicker } from '@/components/date-time-wheel-picker';
 import { ItemEditor } from '@/components/item-editor';
+import { QuoteRotator } from '@/components/quote-rotator';
 import { DEFAULT_TIMEZONE, GROUPS, PRIORITIES } from '@/lib/constants';
 import { COPY } from '@/lib/copy';
 import { createLaunchOrigin } from '@/lib/launch-origin';
@@ -1426,14 +1427,17 @@ export function PlannerApp() {
 
       <section className="planner-grid planner-grid--top">
         <GuidePanel copy={copy} locale={locale} />
-        <ComposerPanel
-          busy={busy}
-          copy={copy}
-          locale={locale}
-          onAnalyze={() => void handleAnalyze()}
-          setComposerText={setComposerText}
-          text={composerText}
-        />
+        <div className="planner-stack planner-stack--composer-column">
+          <ComposerPanel
+            busy={busy}
+            copy={copy}
+            locale={locale}
+            onAnalyze={() => void handleAnalyze()}
+            setComposerText={setComposerText}
+            text={composerText}
+          />
+          <QuoteRotator locale={locale} />
+        </div>
       </section>
 
       <section className="planner-grid">
