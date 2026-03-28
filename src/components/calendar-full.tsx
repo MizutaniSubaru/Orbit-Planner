@@ -9,6 +9,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import { createLaunchOrigin } from '@/lib/launch-origin';
 import { formatEventTimeRange } from '@/lib/time';
 import type { Item, LaunchOrigin } from '@/lib/types';
+import { CalendarExportButton } from './calendar-export-button';
 
 type CalendarFullProps = {
   focusDate: Date;
@@ -433,13 +434,14 @@ export function CalendarFull({
   );
 
   return (
-    <section className="planner-panel planner-panel--calendar">
-      <div className="planner-panel__header">
+    <section className="planner-panel planner-panel--calendar relative">
+      <div className="planner-panel__header flex justify-between items-center pr-2">
         <div>
           <p className="planner-panel__eyebrow">
             {isChinese ? '\u65e5\u5386\u89c6\u56fe\uff08FullCalendar\uff09' : 'Calendar view (FullCalendar)'}
           </p>
         </div>
+        <CalendarExportButton items={items} />
       </div>
 
       <div className="planner-fullcalendar">
