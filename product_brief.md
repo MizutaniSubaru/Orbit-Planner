@@ -6,9 +6,9 @@ Students at universities often receive commitments in messy, informal language: 
 
 ## Solution
 
-Orbit Planner is an AI-first planner that converts natural-language and photo requests into structured events and to-dos, then lets the user review, edit, search, and sync them in one place.
+Orbit Planner is an AI-first planner that converts natural-language, voice-to-text, and photo requests into structured events and to-dos, then lets the user review, edit, search, and sync them in one place.
 
-Its core product flow has three parts. First, the user types one sentence or a batch of schedule lines in Chinese or English, such as "meet advisor tomorrow from 3:00 PM to 4:30 PM; submit the proposal on Friday; buy printer paper",or, the user upload a screenshot that contains a specific schedule. The system splits multiple schedules when needed, extracts title, time, location, priority, and item type, and opens a confirmation step before anything is saved. Second, confirmed items appear in a unified workspace with a calendar for events, a filtered to-do rail for tasks, and an editor that can update details or even convert a to-do into an event. Third, users can search past plans with keyword or AI-assisted semantic retrieval, review activity history with undo, and export or subscribe to their calendar through ICS.
+Its core product flow has three parts. First, the user types one sentence, speaks into the in-box microphone (Chinese/English transcription), or pastes a batch of schedule lines, such as "meet advisor tomorrow from 3:00 PM to 4:30 PM; submit the proposal on Friday; buy printer paper"; alternatively, the user can upload a screenshot that contains a schedule. The system splits multiple schedules when needed, extracts title, time, location, priority, and item type, and opens a confirmation step before anything is saved. Second, confirmed items appear in a unified workspace with a calendar for events, a filtered to-do rail for tasks, and an editor that can update details or even convert a to-do into an event. Third, users can search past plans with keyword or AI-assisted semantic retrieval, review activity history with undo, and export or subscribe to their calendar through ICS.
 
 This directly addresses the original problem by removing form-heavy scheduling work, reducing context switching between calendar and task apps, and making previously buried commitments retrievable after they are created.
 
@@ -20,17 +20,18 @@ Undergraduate and postgraduate students at universities, especially students who
 
 **Usage scenario:**
 
-After checking WeChat and email in the morning, a student pastes a mixed schedule request into Orbit Planner, such as "meet advisor tomorrow from 3:00 PM to 4:30 PM in Trent Building; submit the project proposal on Friday; buy printer paper". The app splits the sentence into one event and two tasks, asks for confirmation if timing is ambiguous, saves them into the planner, and later lets the same student search "what did I do last week with my advisor" or export the week into a calendar app.
+After checking WeChat and email in the morning, a student pastes a mixed schedule request into Orbit Planner or taps the microphone icon to dictate the same request in Chinese/English, such as "meet advisor tomorrow from 3:00 PM to 4:30 PM in Trent Building; submit the project proposal on Friday; buy printer paper". The app splits the sentence into one event and two tasks, asks for confirmation if timing is ambiguous, saves them into the planner, and later lets the same student search "what did I do last week with my advisor" or export the week into a calendar app.
 
 ## Core Features
 
 1. Natural-language planning intake in Chinese and English.
-2. AI-assisted parsing into calendar events and to-do tasks.
-3. Confirmation flow for ambiguous or inferred schedule data.
-4. Calendar views (month/week-style) plus filtered to-do rail.
-5. Activity history for created, updated, completed, and deleted items.
-6. OCR-based image text extraction for planning inputs(beta).
-7. Calendar export utilities.
+2. In-box microphone voice input with Chinese/English speech transcription.
+3. AI-assisted parsing into calendar events and to-do tasks.
+4. Confirmation flow for ambiguous or inferred schedule data.
+5. Calendar views (month/week-style) plus filtered to-do rail.
+6. Activity history for created, updated, completed, and deleted items.
+7. OCR-based image text extraction for planning inputs(beta).
+8. Calendar export utilities.
 
 ## Other Features
 
@@ -50,6 +51,7 @@ After checking WeChat and email in the morning, a student pastes a mixed schedul
 | AI/NLP      | MiniMax via OpenAI-compatible API, optional OpenAI-compatible fallback |
 | OCR/PDF     | Tesseract.js, pdfjs-dist, @napi-rs/canvas                              |
 | Calendar/UI | FullCalendar, lucide-react, @ncdai/react-wheel-picker                  |
+| Speech      | Browser Web Speech API (Chrome/Edge), locale-aware zh-CN/en-US         |
 
 **Project Structure:**
 
@@ -95,7 +97,7 @@ Key dev dependencies include:
 
 **Role of AI in the product:**
 
-The AI layer interprets bilingual natural-language planning requests, including colloquial Chinese time phrases, mixed-language titles, and summary-style search queries. It helps split one input into multiple schedules, infer structured fields, understand semantic search intent, and rerank results when keyword matching alone is not enough. Around that AI layer, deterministic code handles fallback parsing, item payload normalization, history logging, undo behavior, and calendar export so the planner still behaves predictably when AI output is incomplete or unavailable.
+The AI layer interprets bilingual natural-language planning requests, including colloquial Chinese time phrases, mixed-language titles, and summary-style search queries. It helps split one input into multiple schedules, infer structured fields, understand semantic search intent, and rerank results when keyword matching alone is not enough. For voice input, browser-side speech recognition first transcribes spoken Chinese/English into text, then the same parsing pipeline is applied to keep behavior consistent across typing and dictation. Around that AI layer, deterministic code handles fallback parsing, item payload normalization, history logging, undo behavior, and calendar export so the planner still behaves predictably when AI output is incomplete or unavailable.
 
 **Why AI is the right approach here:**
 

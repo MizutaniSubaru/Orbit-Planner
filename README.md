@@ -11,7 +11,7 @@ AI-assisted planning workspace for students, built with Next.js, Bun, and Supaba
 ### 1. Project Overview
 
 Orbit Planner helps students turn unstructured inputs into an executable study plan.
-You can type natural language, upload images, or upload courseware PDFs, then quickly organize content into calendar events, to-do items, and study notes.
+You can type natural language, use the in-box microphone for voice-to-text (Chinese/English), upload images, or upload courseware PDFs, then quickly organize content into calendar events, to-do items, and study notes.
 
 This project is designed as a practical hackathon product: fast setup, low friction, and easy local testing.
 
@@ -19,12 +19,13 @@ This project is designed as a practical hackathon product: fast setup, low frict
 ### Core Features
 
 1. Natural-language planning intake in Chinese and English.
-2. AI-assisted parsing into calendar events and to-do tasks.
-3. Confirmation flow for ambiguous or inferred schedule data.
-4. Calendar views (month/week-style) plus filtered to-do rail.
-5. Activity history for created, updated, completed, and deleted items.
-6. OCR-based image text extraction for planning inputs(beta).
-7. Calendar export utilities.
+2. In-box microphone voice-to-text input with Chinese/English transcription.
+3. AI-assisted parsing into calendar events and to-do tasks.
+4. Confirmation flow for ambiguous or inferred schedule data.
+5. Calendar views (month/week-style) plus filtered to-do rail.
+6. Activity history for created, updated, completed, and deleted items.
+7. OCR-based image text extraction for planning inputs(beta).
+8. Calendar export utilities.
 
 ### Other Features
 
@@ -42,6 +43,7 @@ This project is designed as a practical hackathon product: fast setup, low frict
 | AI/NLP      | MiniMax via OpenAI-compatible API, optional OpenAI-compatible fallback |
 | OCR/PDF     | Tesseract.js, pdfjs-dist, @napi-rs/canvas                              |
 | Calendar/UI | FullCalendar, lucide-react, @ncdai/react-wheel-picker                  |
+| Speech      | Browser Web Speech API (Chrome/Edge), locale-aware zh-CN/en-US         |
 
 ### 4. Project Structure
 
@@ -188,6 +190,8 @@ bun run build
    Confirm `MINIMAX_API_KEY` is configured; otherwise fallback parser is used.
 4. Windows local stability:
    `bun run dev` already uses webpack mode in `package.json`.
+5. Voice input does not start:
+  Check microphone permission and use Chrome/Edge, as speech recognition relies on browser Web Speech API support.
 
 ### 8. Development Team
 
@@ -208,32 +212,34 @@ bun run build
 ### 1. 项目简介
 
 Orbit Planner 是一个面向学生的 AI 辅助计划管理工具，支持将非结构化输入快速整理为可执行的学习安排。
-你可以输入自然语言、上传图片，或上传课件 PDF，然后将内容整理成日历事件、待办任务与学习笔记。
+你可以输入自然语言、在输入框内使用麦克风进行中英文语音转文字、上传图片，或上传课件 PDF，然后将内容整理成日历事件、待办任务与学习笔记。
 
 项目定位为可快速落地的 Hackathon 产品：上手门槛低、可本地运行、便于二次开发。
 
 ### 2. 核心功能
 
 1. 支持中英文自然语言输入。
-2. AI 辅助解析并分类为事件或待办。
-3. 对不明确时间或推断信息提供确认流程。
-4. 提供月/周风格日历视图和待办筛选侧栏。
-5. 内置番茄钟功能，可配置专注时长和休息时长。
-6. 提供 created/updated/completed/deleted 活动历史。
-7. 支持图片 OCR 识别作为输入来源。
-8. 支持课件 PDF 转 Markdown 学习笔记（Beta）。
-9. 提供日历导出能力与语录轮播等体验功能。
+2. 支持输入框麦克风语音输入，可进行中英文转录（zh-CN/en-US）。
+3. AI 辅助解析并分类为事件或待办。
+4. 对不明确时间或推断信息提供确认流程。
+5. 提供月/周风格日历视图和待办筛选侧栏。
+6. 内置番茄钟功能，可配置专注时长和休息时长。
+7. 提供 created/updated/completed/deleted 活动历史。
+8. 支持图片 OCR 识别作为输入来源。
+9. 支持课件 PDF 转 Markdown 学习笔记（Beta）。
+10. 提供日历导出能力与语录轮播等体验功能。
 
 ### 3. 技术栈
 
-| 分层    | 技术                                                            |
-| ------- | --------------------------------------------------------------- |
-| 前端    | Next.js 16、React 19、TypeScript、Tailwind CSS 4、Framer Motion |
-| 后端    | Next.js App Router API Routes（Node 运行时）、Bun               |
-| 数据库  | Supabase（PostgreSQL + RLS）                                    |
-| AI/NLP  | MiniMax（OpenAI 兼容接口），可选 OpenAI 兼容回退                |
-| OCR/PDF | Tesseract.js、pdfjs-dist、@napi-rs/canvas                       |
-| 日历/UI | FullCalendar、lucide-react、@ncdai/react-wheel-picker           |
+| 分层     | 技术                                                            |
+| -------- | --------------------------------------------------------------- |
+| 前端     | Next.js 16、React 19、TypeScript、Tailwind CSS 4、Framer Motion |
+| 后端     | Next.js App Router API Routes（Node 运行时）、Bun               |
+| 数据库   | Supabase（PostgreSQL + RLS）                                    |
+| AI/NLP   | MiniMax（OpenAI 兼容接口），可选 OpenAI 兼容回退                |
+| OCR/PDF  | Tesseract.js、pdfjs-dist、@napi-rs/canvas                       |
+| 日历/UI  | FullCalendar、lucide-react、@ncdai/react-wheel-picker           |
+| 语音识别 | 浏览器 Web Speech API（Chrome/Edge），支持 zh-CN / en-US        |
 
 ### 4. 项目结构
 
@@ -389,6 +395,8 @@ bun run build
    请确认 `MINIMAX_API_KEY` 已配置，否则会使用回退解析。
 4. Windows 本地开发稳定性：
    `bun run dev` 已在 `package.json` 中配置 webpack 模式。
+5. 麦克风无法使用：
+  请检查浏览器麦克风权限，并优先使用 Chrome/Edge（语音识别依赖浏览器 Web Speech API）。
 
 ### 8. 开发团队
 
