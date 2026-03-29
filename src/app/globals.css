@@ -344,6 +344,93 @@ button:disabled {
   font-size: 0.86rem;
 }
 
+.planner-mini-menu--notes {
+  width: min(92vw, 460px);
+  border-color: rgba(58, 93, 150, 0.34);
+  background:
+    linear-gradient(160deg, rgba(101, 142, 214, 0.95) 0%, rgba(71, 111, 183, 0.92) 100%),
+    rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 38px rgba(29, 57, 102, 0.3);
+}
+
+.planner-notes-file-input {
+  display: none;
+}
+
+.planner-mini-menu__status--notes {
+  line-height: 1.42;
+}
+
+.planner-notes-menu__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.planner-notes-menu__actions--end {
+  justify-content: flex-end;
+}
+
+.planner-notes-menu__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--ink) 0%, #243f72 100%);
+  font-size: 0.84rem;
+}
+
+.planner-notes-menu__button--ghost {
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.planner-notes-menu__hint {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.78rem;
+  line-height: 1.36;
+}
+
+.planner-notes-menu__meta {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.8rem;
+}
+
+.planner-notes-menu__preview {
+  max-height: 290px;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(18, 32, 61, 0.26);
+}
+
+.planner-notes-menu__preview pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #fff;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.planner-notes-menu__error {
+  margin: 0;
+  border: 1px solid rgba(255, 198, 198, 0.45);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #ffe7e7;
+  font-size: 0.8rem;
+  background: rgba(96, 20, 20, 0.26);
+}
+
 .planner-toast {
   margin: 0 auto 20px;
   max-width: 1480px;
@@ -399,12 +486,12 @@ button:disabled {
   flex-direction: column;
 }
 
-.planner-top-search-slot > .planner-panel {
+.planner-top-search-slot>.planner-panel {
   flex: 0 0 auto;
   min-height: 0;
 }
 
-.planner-top-cell--quote > .quote-rotator {
+.planner-top-cell--quote>.quote-rotator {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -1954,6 +2041,7 @@ button:disabled {
 }
 
 @media (min-width: 1181px) {
+
   .planner-top-search-slot,
   .planner-top-cell--quote {
     align-self: stretch;
@@ -2548,4 +2636,3 @@ button:disabled {
     font-size: 0.66rem;
   }
 }
-

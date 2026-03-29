@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import type { CSSProperties, ChangeEvent } from 'react';
-import { ImagePlus, X } from 'lucide-react';
+import { Copy, ImagePlus, NotebookPen, Upload, X } from 'lucide-react';
 import { CalendarFull } from '@/components/calendar-full';
 import { ItemEditor } from '@/components/item-editor';
 import { PlannerEditorFields } from '@/components/planner-editor-fields';
@@ -68,6 +68,15 @@ type ComposerImageState = {
   mimeType: string;
   ocrText: string;
   status: 'error' | 'processing' | 'ready';
+};
+
+type NotesResult = {
+  charCount: number;
+  fileName: string;
+  markdown: string;
+  mode: 'ai' | 'fallback';
+  pageCount: number;
+  processedPages: number;
 };
 
 type ConfirmationModalProps = {
@@ -137,6 +146,7 @@ type SearchResultsPanelProps = {
 
 const MONTH_CALENDAR_VIEW = 'dayGridMonth';
 const WEEK_CALENDAR_VIEW = 'timeGridTwoDayRail';
+const MAX_NOTES_PDF_BYTES = 20 * 1024 * 1024;
 
 function resolveLocale() {
   if (typeof navigator === 'undefined') {
@@ -324,7 +334,7 @@ function ComposerPanel({
         : 'Extracting text from the image...'
       : imageSelection?.status === 'error'
         ? imageSelection.errorMessage ||
-          (isChinese ? '图片识别失败，请换一张更清晰的图片重试。' : 'Image OCR failed. Try a clearer image.')
+        (isChinese ? '图片识别失败，请换一张更清晰的图片重试。' : 'Image OCR failed. Try a clearer image.')
         : imageSelection?.status === 'ready'
           ? isChinese
             ? '图片文字已提取，分析时会和文本输入一起发送。'
@@ -1253,6 +1263,10 @@ export function PlannerApp() {
   const [searchFallback, setSearchFallback] = useState(false);
   const [calendarViewType, setCalendarViewType] = useState(MONTH_CALENDAR_VIEW);
   const [monthSchedulePanelHeight, setMonthSchedulePanelHeight] = useState<number | null>(null);
+  const [showNotesMenu, setShowNotesMenu] = useState(false);
+  const [notesBusy, setNotesBusy] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [notesResult, setNotesResult] = useState<NotesResult | null>(null);
   const [showPomodoroMenu, setShowPomodoroMenu] = useState(false);
   const [focusMinutes, setFocusMinutes] = useState(25);
   const [breakMinutes, setBreakMinutes] = useState(5);
@@ -1266,9 +1280,15 @@ export function PlannerApp() {
   const composerImageRequestIdRef = useRef(0);
   const calendarViewTypeRef = useRef(MONTH_CALENDAR_VIEW);
   const previousCalendarViewTypeRef = useRef(MONTH_CALENDAR_VIEW);
+  const notesMenuRef = useRef<HTMLDivElement | null>(null);
+  const notesFileInputRef = useRef<HTMLInputElement | null>(null);
   const pomodoroMenuRef = useRef<HTMLDivElement | null>(null);
 
   const copy = resolveCopy(locale);
+
+  const closeNotesMenu = useCallback(() => {
+    setShowNotesMenu(false);
+  }, []);
 
   const closePomodoroMenu = useCallback(() => {
     setShowPomodoroMenu(false);
@@ -1419,6 +1439,39 @@ export function PlannerApp() {
       top: nextTop,
     });
   }, [calendarViewType]);
+
+  useEffect(() => {
+    if (!showNotesMenu) {
+      return;
+    }
+
+    function handleOutsidePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (notesMenuRef.current?.contains(target)) {
+        return;
+      }
+
+      closeNotesMenu();
+    }
+
+    function handleEscapeKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        closeNotesMenu();
+      }
+    }
+
+    window.addEventListener('pointerdown', handleOutsidePointerDown);
+    window.addEventListener('keydown', handleEscapeKey);
+
+    return () => {
+      window.removeEventListener('pointerdown', handleOutsidePointerDown);
+      window.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [closeNotesMenu, showNotesMenu]);
 
   useEffect(() => {
     if (!showPomodoroMenu) {
@@ -1573,6 +1626,122 @@ export function PlannerApp() {
     setComposerImage(null);
   }
 
+  function clearNotesResult() {
+    setNotesError(null);
+    setNotesResult(null);
+  }
+
+  async function handleNotesPdfChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      clearNotesResult();
+      setNotesError(
+        locale.startsWith('zh')
+          ? '\u4ec5\u652f\u6301 PDF \u683c\u5f0f\u6587\u4ef6\u3002'
+          : 'Only PDF files are supported.'
+      );
+      return;
+    }
+
+    if (file.size > MAX_NOTES_PDF_BYTES) {
+      clearNotesResult();
+      setNotesError(
+        locale.startsWith('zh')
+          ? `PDF \u6587\u4ef6\u8fc7\u5927\uff0c\u8bf7\u4fdd\u6301\u5728 ${Math.floor(MAX_NOTES_PDF_BYTES / (1024 * 1024))}MB \u4ee5\u5185\u3002`
+          : `PDF is too large. Keep it within ${Math.floor(MAX_NOTES_PDF_BYTES / (1024 * 1024))}MB.`
+      );
+      return;
+    }
+
+    setNotesBusy(true);
+    setNotesError(null);
+    setMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('locale', locale);
+      formData.append('timezone', timezone);
+
+      const response = await fetch('/api/nl/notes', {
+        body: formData,
+        method: 'POST',
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || 'Failed to generate notes from the PDF.');
+      }
+
+      if (typeof payload.markdown !== 'string' || !payload.markdown.trim()) {
+        throw new Error(
+          locale.startsWith('zh')
+            ? '\u672a\u751f\u6210\u53ef\u7528\u7684 Markdown \u7ed3\u679c\u3002'
+            : 'No readable markdown was generated.'
+        );
+      }
+
+      setNotesResult({
+        charCount:
+          typeof payload.source?.charCount === 'number' ? payload.source.charCount : 0,
+        fileName:
+          typeof payload.source?.fileName === 'string' ? payload.source.fileName : file.name,
+        markdown: payload.markdown.trim(),
+        mode: payload.mode === 'ai' ? 'ai' : 'fallback',
+        pageCount:
+          typeof payload.source?.pageCount === 'number' ? payload.source.pageCount : 0,
+        processedPages:
+          typeof payload.source?.processedPages === 'number'
+            ? payload.source.processedPages
+            : 0,
+      });
+    } catch (error) {
+      clearNotesResult();
+      setNotesError(
+        error instanceof Error
+          ? error.message
+          : locale.startsWith('zh')
+            ? '\u8bfe\u4ef6\u7b14\u8bb0\u6574\u7406\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002'
+            : 'Failed to organize notes from the PDF.'
+      );
+    } finally {
+      setNotesBusy(false);
+    }
+  }
+
+  async function copyNotesMarkdown() {
+    if (!notesResult?.markdown) {
+      return;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      setMessage(
+        locale.startsWith('zh')
+          ? '\u5f53\u524d\u73af\u5883\u4e0d\u652f\u6301\u526a\u8d34\u677f\u590d\u5236\u3002'
+          : 'Clipboard is not available in this environment.'
+      );
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(notesResult.markdown);
+      setMessage(locale.startsWith('zh') ? '\u5df2\u590d\u5236 Markdown \u7b14\u8bb0\u3002' : 'Markdown notes copied.');
+    } catch {
+      setMessage(
+        locale.startsWith('zh')
+          ? '\u590d\u5236\u5931\u8d25\uff0c\u8bf7\u624b\u52a8\u9009\u4e2d\u540e\u590d\u5236\u3002'
+          : 'Copy failed. Please select and copy manually.'
+      );
+    }
+  }
+
   async function handleComposerImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -1657,13 +1826,13 @@ export function PlannerApp() {
       setComposerImage(
         dataUrl
           ? {
-              dataUrl,
-              errorMessage,
-              fileName: file.name,
-              mimeType: file.type,
-              ocrText: '',
-              status: 'error',
-            }
+            dataUrl,
+            errorMessage,
+            fileName: file.name,
+            mimeType: file.type,
+            ocrText: '',
+            status: 'error',
+          }
           : null
       );
       setMessage(errorMessage);
@@ -2066,6 +2235,21 @@ export function PlannerApp() {
     sortMode: todoSortMode,
   });
 
+  const notesIsChinese = locale.startsWith('zh');
+  const notesUploadLabel = notesResult
+    ? notesIsChinese
+      ? '\u66ff\u6362 PDF'
+      : 'Replace PDF'
+    : notesIsChinese
+      ? '\u4e0a\u4f20 PDF'
+      : 'Upload PDF';
+  const notesSummaryLabel = notesIsChinese
+    ? '\u4ec5\u57fa\u4e8e\u4e0a\u4f20\u8bfe\u4ef6\u5185\u5bb9\u751f\u6210 Markdown \u7b14\u8bb0\u3002'
+    : 'Generate markdown notes strictly from uploaded courseware content.';
+  const notesBetaLabel = notesIsChinese
+    ? '\u6b64\u529f\u80fd\u8fd8\u5c5e\u4e8e Beta \u7248\u672c\uff0c\u7ed3\u679c\u53ef\u80fd\u4e0d\u51c6\u786e'
+    : 'This feature is in Beta and results may be inaccurate.';
+
   const bottomGridStyle = (monthSchedulePanelHeight
     ? { '--schedule-panel-height': `${monthSchedulePanelHeight}px` }
     : undefined) as CSSProperties | undefined;
@@ -2079,11 +2263,129 @@ export function PlannerApp() {
       <div className="planner-shell__halo planner-shell__halo--one" />
       <div className="planner-shell__halo planner-shell__halo--two" />
 
-      <section className={`planner-hero ${showPomodoroMenu ? 'planner-hero--menu-open' : ''}`}>
+      <section className={`planner-hero ${showPomodoroMenu || showNotesMenu ? 'planner-hero--menu-open' : ''}`}>
         <div>
           <h1 className="planner-hero__title">Orbit Planner</h1>
         </div>
         <div className="planner-hero__controls">
+          <div className="planner-hero__menu" ref={notesMenuRef}>
+            <input
+              accept="application/pdf,.pdf"
+              className="planner-notes-file-input"
+              onChange={(event) => void handleNotesPdfChange(event)}
+              ref={notesFileInputRef}
+              type="file"
+            />
+
+            <MotionButton
+              aria-expanded={showNotesMenu}
+              aria-haspopup="menu"
+              aria-label={notesIsChinese ? '\u8bfe\u4ef6\u7b14\u8bb0\u6574\u7406' : 'Courseware note organizer'}
+              className="planner-button planner-button--ghost planner-button--icon"
+              motionPreset="subtle"
+              onClick={() => {
+                setShowPomodoroMenu(false);
+                setShowNotesMenu((current) => !current);
+              }}
+              type="button"
+            >
+              <span className="planner-button__icon" aria-hidden="true">
+                <NotebookPen size={18} />
+              </span>
+            </MotionButton>
+
+            {showNotesMenu ? (
+              <div
+                aria-label={notesIsChinese ? '\u8bfe\u4ef6\u7b14\u8bb0\u6574\u7406' : 'Courseware note organizer'}
+                className="planner-mini-menu planner-mini-menu--notes"
+                role="menu"
+              >
+                <div className="planner-mini-menu__section">
+                  <p className="planner-mini-menu__status planner-mini-menu__status--notes">{notesSummaryLabel}</p>
+                </div>
+
+                <div className="planner-notes-menu__actions">
+                  <MotionButton
+                    className="planner-notes-menu__button"
+                    disabled={notesBusy}
+                    motionPreset="subtle"
+                    onClick={() => notesFileInputRef.current?.click()}
+                    role="menuitem"
+                    type="button"
+                  >
+                    <span className="planner-button__icon" aria-hidden="true">
+                      <Upload size={15} />
+                    </span>
+                    {notesUploadLabel}
+                  </MotionButton>
+
+                  {notesResult ? (
+                    <MotionButton
+                      className="planner-notes-menu__button planner-notes-menu__button--ghost"
+                      disabled={notesBusy}
+                      motionPreset="subtle"
+                      onClick={clearNotesResult}
+                      role="menuitem"
+                      type="button"
+                    >
+                      <span className="planner-button__icon" aria-hidden="true">
+                        <X size={15} />
+                      </span>
+                      {notesIsChinese ? '\u6e05\u7a7a' : 'Clear'}
+                    </MotionButton>
+                  ) : null}
+                </div>
+
+                <p className="planner-notes-menu__hint">
+                  {notesIsChinese
+                    ? '\u4ec5\u652f\u6301 PDF\uff0c\u6700\u5927 20MB\uff0c\u6700\u591a 40 \u9875\u3002'
+                    : 'PDF only, max 20MB, up to 40 pages.'}
+                </p>
+
+                <p className="planner-notes-menu__hint">{notesBetaLabel}</p>
+
+                {notesBusy ? (
+                  <p className="planner-mini-menu__status planner-mini-menu__status--notes">
+                    {notesIsChinese
+                      ? '\u6b63\u5728\u8fdb\u884c OCR \u4e0e\u7b14\u8bb0\u6574\u7406\uff0c\u8bf7\u7a0d\u5019...'
+                      : 'Running OCR and organizing notes, please wait...'}
+                  </p>
+                ) : null}
+
+                {notesError ? <p className="planner-notes-menu__error">{notesError}</p> : null}
+
+                {notesResult ? (
+                  <>
+                    <p className="planner-notes-menu__meta">
+                      {notesResult.fileName} · {notesResult.processedPages}/{notesResult.pageCount}{' '}
+                      {notesIsChinese ? '\u9875' : 'pages'} · {notesResult.charCount}{' '}
+                      {notesIsChinese ? '\u5b57\u7b26' : 'chars'} · {notesResult.mode}
+                    </p>
+
+                    <div className="planner-notes-menu__preview" aria-live="polite">
+                      <pre>{notesResult.markdown}</pre>
+                    </div>
+
+                    <div className="planner-notes-menu__actions planner-notes-menu__actions--end">
+                      <MotionButton
+                        className="planner-notes-menu__button"
+                        motionPreset="subtle"
+                        onClick={() => void copyNotesMarkdown()}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <span className="planner-button__icon" aria-hidden="true">
+                          <Copy size={15} />
+                        </span>
+                        {notesIsChinese ? '\u590d\u5236 Markdown' : 'Copy markdown'}
+                      </MotionButton>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
           <div className="planner-hero__menu" ref={pomodoroMenuRef}>
             <MotionButton
               aria-expanded={showPomodoroMenu}
@@ -2091,7 +2393,10 @@ export function PlannerApp() {
               aria-label={copy.pomodoro.tomatoLabel}
               className="planner-button planner-button--ghost planner-button--icon"
               motionPreset="subtle"
-              onClick={() => setShowPomodoroMenu((current) => !current)}
+              onClick={() => {
+                setShowNotesMenu(false);
+                setShowPomodoroMenu((current) => !current);
+              }}
               type="button"
             >
               <span className="planner-button__icon" aria-hidden="true">

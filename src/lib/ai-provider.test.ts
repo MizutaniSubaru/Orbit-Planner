@@ -3,6 +3,8 @@ import { getAiConfig, getAiMaxCompletionTokens, isRetryableModelError } from '@/
 
 const ORIGINAL_ENV = {
   MINIMAX_MODEL: process.env.MINIMAX_MODEL,
+  MINIMAX_NOTES_MAX_COMPLETION_TOKENS: process.env.MINIMAX_NOTES_MAX_COMPLETION_TOKENS,
+  MINIMAX_NOTES_MODEL: process.env.MINIMAX_NOTES_MODEL,
   MINIMAX_PARSE_MAX_COMPLETION_TOKENS: process.env.MINIMAX_PARSE_MAX_COMPLETION_TOKENS,
   MINIMAX_PARSE_MODEL: process.env.MINIMAX_PARSE_MODEL,
   MINIMAX_SEARCH_INTENT_MAX_COMPLETION_TOKENS:
@@ -13,6 +15,8 @@ const ORIGINAL_ENV = {
 
 afterEach(() => {
   process.env.MINIMAX_MODEL = ORIGINAL_ENV.MINIMAX_MODEL;
+  process.env.MINIMAX_NOTES_MAX_COMPLETION_TOKENS = ORIGINAL_ENV.MINIMAX_NOTES_MAX_COMPLETION_TOKENS;
+  process.env.MINIMAX_NOTES_MODEL = ORIGINAL_ENV.MINIMAX_NOTES_MODEL;
   process.env.MINIMAX_PARSE_MAX_COMPLETION_TOKENS = ORIGINAL_ENV.MINIMAX_PARSE_MAX_COMPLETION_TOKENS;
   process.env.MINIMAX_PARSE_MODEL = ORIGINAL_ENV.MINIMAX_PARSE_MODEL;
   process.env.MINIMAX_SEARCH_INTENT_MAX_COMPLETION_TOKENS =
@@ -33,6 +37,18 @@ describe('ai provider config', () => {
     expect(config.candidateModels).not.toContain('MiniMax-M2.7-highspeed');
   });
 
+  it('normalizes an explicitly configured notes highspeed model to its non-highspeed pair', () => {
+    process.env.MINIMAX_NOTES_MODEL = 'MiniMax-M2.7-highspeed';
+    process.env.MINIMAX_MODEL = 'MiniMax-M2.5-highspeed';
+
+    const config = getAiConfig('notes');
+
+    expect(config.model).toBe('MiniMax-M2.7');
+    expect(config.candidateModels).toContain('MiniMax-M2.7');
+    expect(config.candidateModels).not.toContain('MiniMax-M2.7-highspeed');
+    expect(config.candidateModels).not.toContain('MiniMax-M2.5-highspeed');
+  });
+
   it('normalizes an explicitly configured parse highspeed model to its non-highspeed pair', () => {
     process.env.MINIMAX_PARSE_MODEL = 'MiniMax-M2.7-highspeed';
     process.env.MINIMAX_MODEL = 'MiniMax-M2.5-highspeed';
@@ -49,6 +65,12 @@ describe('ai provider config', () => {
     delete process.env.MINIMAX_PARSE_MAX_COMPLETION_TOKENS;
 
     expect(getAiMaxCompletionTokens('parse')).toBe(512);
+  });
+
+  it('uses a dedicated default completion token budget for notes generation', () => {
+    delete process.env.MINIMAX_NOTES_MAX_COMPLETION_TOKENS;
+
+    expect(getAiMaxCompletionTokens('notes')).toBe(1536);
   });
 
   it('prefers non-highspeed search models before highspeed fallbacks', () => {
