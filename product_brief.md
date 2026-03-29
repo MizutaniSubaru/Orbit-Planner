@@ -133,4 +133,4 @@ Google Calendar and Apple Calendar are strong for structured event entry, but th
 
 **What makes our approach different:**
 
-Orbit Planner combines bilingual natural-language capture, a confirmation-first review step, unified calendar and to-do management, semantic search across saved items, history undo, and ICS/webcal export in one lightweight planner. The key trade-off is deliberate: we optimize for fast intake of messy real student input, not for heavyweight enterprise workflow depth.
+Orbit Planner combines bilingual natural-language capture, a confirmation-first review step, unified calendar and to-do management, semantic search across saved items, history undo, and ICS export in one lightweight planner. The key trade-off is deliberate: we optimize for intake of messy real student input, not for heavyweight enterprise workflow depth.
