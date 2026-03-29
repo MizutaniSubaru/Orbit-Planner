@@ -17,6 +17,7 @@ const MINIMAX_MODEL_FALLBACKS = [
 
 const TASK_MODEL_ENV_KEYS = {
   default: 'MINIMAX_MODEL',
+  notes: 'MINIMAX_NOTES_MODEL',
   parse: 'MINIMAX_PARSE_MODEL',
   'search-intent': 'MINIMAX_SEARCH_INTENT_MODEL',
   'search-rerank': 'MINIMAX_SEARCH_RERANK_MODEL',
@@ -24,18 +25,21 @@ const TASK_MODEL_ENV_KEYS = {
 
 const TASK_DEFAULT_MODELS = {
   default: DEFAULT_MINIMAX_MODEL,
+  notes: DEFAULT_JSON_TASK_MODEL,
   parse: DEFAULT_JSON_TASK_MODEL,
   'search-intent': DEFAULT_SEARCH_TASK_MODEL,
   'search-rerank': DEFAULT_SEARCH_TASK_MODEL,
 } as const;
 
 const TASK_MAX_COMPLETION_TOKENS = {
+  notes: 1536,
   parse: 512,
   'search-intent': 384,
   'search-rerank': 768,
 } as const;
 
 const TASK_MAX_TOKEN_ENV_KEYS = {
+  notes: 'MINIMAX_NOTES_MAX_COMPLETION_TOKENS',
   parse: 'MINIMAX_PARSE_MAX_COMPLETION_TOKENS',
   'search-intent': 'MINIMAX_SEARCH_INTENT_MAX_COMPLETION_TOKENS',
   'search-rerank': 'MINIMAX_SEARCH_RERANK_MAX_COMPLETION_TOKENS',
@@ -98,7 +102,7 @@ function getTaskModel(task: AiTask) {
     return getConfiguredGlobalModel() || TASK_DEFAULT_MODELS.default;
   }
 
-  if (task === 'parse') {
+  if (task === 'parse' || task === 'notes') {
     return (
       removeHighspeedSuffix(process.env[TASK_MODEL_ENV_KEYS[task]]) ||
       removeHighspeedSuffix(getConfiguredGlobalModel()) ||
@@ -122,13 +126,13 @@ function getTaskFallbacks(task: AiTask) {
     return [...MINIMAX_MODEL_FALLBACKS];
   }
 
-  if (task === 'parse') {
+  if (task === 'parse' || task === 'notes') {
     return [
       TASK_DEFAULT_MODELS[task],
       ...MINIMAX_MODEL_FALLBACKS
         .filter((model) => !model.includes('highspeed'))
         .map((model) => removeHighspeedSuffix(model) as string),
-      ];
+    ];
   }
 
   if (isSearchTask(task)) {
@@ -160,11 +164,11 @@ export function getAiConfig(task: AiTask = 'default'): AiConfig {
   const configuredGlobalModel = getConfiguredGlobalModel();
   const model = getTaskModel(task);
   const candidateModels =
-    task === 'parse'
+    task === 'parse' || task === 'notes'
       ? uniqueNonEmpty([model, ...getTaskFallbacks(task)])
       : isSearchTask(task)
         ? uniqueNonEmpty([model, ...getTaskFallbacks(task), configuredGlobalModel || ''])
-      : uniqueNonEmpty([model, configuredGlobalModel || '', ...getTaskFallbacks(task)]);
+        : uniqueNonEmpty([model, configuredGlobalModel || '', ...getTaskFallbacks(task)]);
 
   return {
     apiKey,
