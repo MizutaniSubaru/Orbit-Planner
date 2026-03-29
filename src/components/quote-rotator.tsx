@@ -171,7 +171,7 @@ export function QuoteRotator({ locale }: QuoteRotatorProps) {
             <div className="planner-panel__header quote-rotator__header">
                 <div>
                     <h2 className="planner-panel__title quote-rotator__title">
-                        {isChinese ? '今日份心动台词' : 'Line of the Moment'}
+                        Line of the Moment
                     </h2>
                 </div>
             </div>
