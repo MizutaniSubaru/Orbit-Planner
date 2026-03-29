@@ -6,9 +6,9 @@ Students at universities often receive commitments in messy, informal language: 
 
 ## Solution
 
-Orbit Planner is an AI-first planner that converts natural-language and photo requests into structured events and to-dos, then lets the user review, edit, search, and sync them in one place.
+Orbit Planner is an AI-first planner that converts natural-language, voice-to-text, and photo requests into structured events and to-dos, then lets the user review, edit, search, and sync them in one place.
 
-Its core product flow has three parts. First, the user types one sentence or a batch of schedule lines in Chinese or English, such as "meet advisor tomorrow from 3:00 PM to 4:30 PM; submit the proposal on Friday; buy printer paper",or, the user upload a screenshot that contains a specific schedule. The system splits multiple schedules when needed, extracts title, time, location, priority, and item type, and opens a confirmation step before anything is saved. Second, confirmed items appear in a unified workspace with a calendar for events, a filtered to-do rail for tasks, and an editor that can update details or even convert a to-do into an event. Third, users can search past plans with keyword or AI-assisted semantic retrieval, review activity history with undo, and export or subscribe to their calendar through ICS.
+Its core product flow has three parts. First, the user types one sentence, speaks into the in-box microphone (Chinese/English transcription), or pastes a batch of schedule lines, such as "meet advisor tomorrow from 3:00 PM to 4:30 PM; submit the proposal on Friday; buy printer paper"; alternatively, the user can upload a screenshot that contains a schedule. The system splits multiple schedules when needed, extracts title, time, location, priority, and item type, and opens a confirmation step before anything is saved. Second, confirmed items appear in a unified workspace with a calendar for events, a filtered to-do rail for tasks, and an editor that can update details or even convert a to-do into an event. Third, users can search past plans with keyword or AI-assisted semantic retrieval, review activity history with undo, and export or subscribe to their calendar through ICS.
 
 This directly addresses the original problem by removing form-heavy scheduling work, reducing context switching between calendar and task apps, and making previously buried commitments retrievable after they are created.
 
@@ -20,17 +20,18 @@ Undergraduate and postgraduate students at universities, especially students who
 
 **Usage scenario:**
 
-After checking WeChat and email in the morning, a student pastes a mixed schedule request into Orbit Planner, such as "meet advisor tomorrow from 3:00 PM to 4:30 PM in Trent Building; submit the project proposal on Friday; buy printer paper". The app splits the sentence into one event and two tasks, asks for confirmation if timing is ambiguous, saves them into the planner, and later lets the same student search "what did I do last week with my advisor" or export the week into a calendar app.
+After checking WeChat and email in the morning, a student pastes a mixed schedule request into Orbit Planner or taps the microphone icon to dictate the same request in Chinese/English, such as "meet advisor tomorrow from 3:00 PM to 4:30 PM in Trent Building; submit the project proposal on Friday; buy printer paper". The app splits the sentence into one event and two tasks, asks for confirmation if timing is ambiguous, saves them into the planner, and later lets the same student search "what did I do last week with my advisor" or export the week into a calendar app.
 
 ## Core Features
 
 1. Natural-language planning intake in Chinese and English.
-2. AI-assisted parsing into calendar events and to-do tasks.
-3. Confirmation flow for ambiguous or inferred schedule data.
-4. Calendar views (month/week-style) plus filtered to-do rail.
-5. Activity history for created, updated, completed, and deleted items.
-6. OCR-based image text extraction for planning inputs(beta).
-7. Calendar export utilities.
+2. In-box microphone voice input with Chinese/English speech transcription.
+3. AI-assisted parsing into calendar events and to-do tasks.
+4. Confirmation flow for ambiguous or inferred schedule data.
+5. Calendar views (month/week-style) plus filtered to-do rail.
+6. Activity history for created, updated, completed, and deleted items.
+7. OCR-based image text extraction for planning inputs(beta).
+8. Calendar export utilities.
 
 ## Other Features
 
@@ -50,6 +51,7 @@ After checking WeChat and email in the morning, a student pastes a mixed schedul
 | AI/NLP      | MiniMax via OpenAI-compatible API, optional OpenAI-compatible fallback |
 | OCR/PDF     | Tesseract.js, pdfjs-dist, @napi-rs/canvas                              |
 | Calendar/UI | FullCalendar, lucide-react, @ncdai/react-wheel-picker                  |
+| Speech      | Browser Web Speech API (Chrome/Edge), locale-aware zh-CN/en-US         |
 
 **Project Structure:**
 
@@ -95,7 +97,7 @@ Key dev dependencies include:
 
 **Role of AI in the product:**
 
-The AI layer interprets bilingual natural-language planning requests, including colloquial Chinese time phrases, mixed-language titles, and summary-style search queries. It helps split one input into multiple schedules, infer structured fields, understand semantic search intent, and rerank results when keyword matching alone is not enough. Around that AI layer, deterministic code handles fallback parsing, item payload normalization, history logging, undo behavior, and calendar export so the planner still behaves predictably when AI output is incomplete or unavailable.
+The AI layer interprets bilingual natural-language planning requests, including colloquial Chinese time phrases, mixed-language titles, and summary-style search queries. It helps split one input into multiple schedules, infer structured fields, understand semantic search intent, and rerank results when keyword matching alone is not enough. For voice input, browser-side speech recognition first transcribes spoken Chinese/English into text, then the same parsing pipeline is applied to keep behavior consistent across typing and dictation. Around that AI layer, deterministic code handles fallback parsing, item payload normalization, history logging, undo behavior, and calendar export so the planner still behaves predictably when AI output is incomplete or unavailable.
 
 **Why AI is the right approach here:**
 
@@ -134,3 +136,59 @@ Google Calendar and Apple Calendar are strong for structured event entry, but th
 **What makes our approach different:**
 
 Orbit Planner combines bilingual natural-language capture, a confirmation-first review step, unified calendar and to-do management, semantic search across saved items, history undo, and ICS export in one lightweight planner. The key trade-off is deliberate: we optimize for intake of messy real student input, not for heavyweight enterprise workflow depth.
+
+## A demonstration of some features.
+
+### Main interface
+<img width="2465" height="1292" alt="image" src="https://github.com/user-attachments/assets/37301b7c-b5c2-4bcf-8007-5a6665132272" />
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/981e7b04-18e0-4b29-a179-a18a00abe56c" />
+<img width="584" height="1240" alt="image" src="https://github.com/user-attachments/assets/223ba3f4-06a6-4907-8313-0e3631be47ee" />
+
+### Batch import of multiple schedules
+
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/1fa4b6b3-08c1-4d5e-a6c7-502c9c258cb2" />
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/a4d47305-2852-40d0-b1ba-2d60f36ca08a" />
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/ee02353c-397c-4862-9474-a3e544f9672f" />
+
+### Allow users to manually modify parameters during the confirmation process,The figure illustrates the modification of time parameters.
+
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/4f60d1b9-7572-4632-bbe5-901e4298d144" />
+
+### Import TO-DOs.
+
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/fc6f22ce-2f92-43fe-83b2-f5ba5e70954f" />
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/2a0bb2ba-4642-4494-a979-bc3897daa1ba" />
+
+### AI fuzzy search for schedules.
+
+<img width="1270" height="560" alt="image" src="https://github.com/user-attachments/assets/c8f33ee6-aecb-4b35-99cb-b82298eaec6d" />
+
+### Recognize schedules from images and add them automatically.
+
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/fdfd76fb-d6da-45d2-851e-aee84ad5ae9e" />
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/51b17352-ec93-469f-9bca-6520f786e31f" />
+
+### To-Do List supports grouping and sorting.
+
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/df26a290-d374-422c-9fa9-8a4a71fa9f8c" />
+
+### Export the calendar as an ICS file. This allows you to import your schedule into programs such as Outlook or Apple Calendar.
+
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/9b126d83-93ca-4064-96b4-8c88d102410d" />
+<img width="2560" height="1262" alt="image" src="https://github.com/user-attachments/assets/c8a1ba19-3b8e-4390-8749-5c64908d3d5e" />
+
+### Lightweight Pomodoro components.
+
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/48d6f008-81a5-4818-bdd1-a1622a0ecb16" />
+<img width="980" height="712" alt="image" src="https://github.com/user-attachments/assets/ac55dcf2-13be-4116-8831-127232290d0b" />
+
+### A lightweight PDF recognition and summarization component.
+
+
+<img width="2544" height="1336" alt="image" src="https://github.com/user-attachments/assets/838644a3-0c10-49e4-b667-1287aea3a278" />
+
+
+
+
+
+
