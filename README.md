@@ -2,6 +2,10 @@
 
 AI-assisted planning workspace for students, built with Next.js, Bun, and Supabase.
 
+![photo_1_2026-03-29_13-14-35](https://github.com/user-attachments/assets/60108cf1-f086-48e7-bed7-093c11259bbe)
+<img width="2468" height="1463" alt="image" src="https://github.com/user-attachments/assets/b19446c9-2d91-4eef-83b0-f8488896b3cb" />
+
+
 ## English
 
 ### 1. Project Overview
@@ -10,6 +14,7 @@ Orbit Planner helps students turn unstructured inputs into an executable study p
 You can type natural language, upload images, or upload courseware PDFs, then quickly organize content into calendar events, to-do items, and study notes.
 
 This project is designed as a practical hackathon product: fast setup, low friction, and easy local testing.
+
 
 ### Core Features
 
