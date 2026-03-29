@@ -11,17 +11,21 @@ You can type natural language, upload images, or upload courseware PDFs, then qu
 
 This project is designed as a practical hackathon product: fast setup, low friction, and easy local testing.
 
-### 2. Core Features
+### Core Features
 
 1. Natural-language planning intake in Chinese and English.
 2. AI-assisted parsing into calendar events and to-do tasks.
 3. Confirmation flow for ambiguous or inferred schedule data.
 4. Calendar views (month/week-style) plus filtered to-do rail.
-5. Built-in Pomodoro timer with configurable focus and break durations.
-6. Activity history for created, updated, completed, and deleted items.
-7. OCR-based image text extraction for planning inputs.
-8. PDF courseware to markdown notes workflow (beta).
-9. Calendar export utilities and quote rotation UX elements.
+5. Activity history for created, updated, completed, and deleted items.
+6. OCR-based image text extraction for planning inputs(beta).
+7. PDF courseware to markdown notes workflow (beta).
+8. Calendar export utilities.
+
+## Other Features
+
+1. Quote rotation UX elements.
+2. A simple pomodoro timer.
 
 ### 3. Tech Stack
 
