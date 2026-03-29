@@ -51,7 +51,7 @@ After checking WeChat and email in the morning, a student pastes a mixed schedul
 | OCR/PDF     | Tesseract.js, pdfjs-dist, @napi-rs/canvas                              |
 | Calendar/UI | FullCalendar, lucide-react, @ncdai/react-wheel-picker                  |
 
-**4. Project Structure:**
+**Project Structure:**
 
 ```text
 UNNC_Hackthon_project/
