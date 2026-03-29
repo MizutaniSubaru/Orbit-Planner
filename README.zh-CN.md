@@ -7,6 +7,8 @@
 ![photo_1_2026-03-29_13-14-35](https://github.com/user-attachments/assets/60108cf1-f086-48e7-bed7-093c11259bbe)
 <img width="2468" height="1463" alt="image" src="https://github.com/user-attachments/assets/b19446c9-2d91-4eef-83b0-f8488896b3cb" />
 
+
+我们已经提供了一个 Vercel 的在线部署版本,check [orbit planner](https://unnc-hackthon-project.vercel.app/)
 ### 1. 项目概述
 
 Orbit Planner 帮助学生将非结构化输入整理为可执行的学习计划。
