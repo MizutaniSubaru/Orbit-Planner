@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 import type { Quote, QuoteView } from '@/lib/types';
 
 const DEFAULT_LIMIT = 80;
@@ -34,7 +34,7 @@ function toQuoteView(value: Quote): QuoteView | null {
 
 export async function GET(request: Request) {
     try {
-        const supabase = getSupabaseClient();
+        const supabase = await getSupabaseServerClient();
         if (!supabase) {
             return NextResponse.json(
                 { error: 'Supabase is not configured.', quotes: [] },

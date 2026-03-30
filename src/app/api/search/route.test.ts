@@ -5,6 +5,7 @@ let currentItems: Item[] = [];
 let aiCalls: string[] = [];
 let searchIntentPayload: unknown = null;
 let searchRerankPayload: unknown = null;
+let mockUserId: string | null = 'user-1';
 
 function makeItem(overrides: Partial<Item>): Item {
   return {
@@ -31,7 +32,7 @@ function makeItem(overrides: Partial<Item>): Item {
 }
 
 mock.module('@/lib/ai-provider', () => ({
-  logAiJsonMetrics: () => {},
+  logAiJsonMetrics: () => { },
   requestAiJson: async ({ task }: { task: string }) => {
     aiCalls.push(task);
     if (task === 'search-intent') {
@@ -44,12 +45,22 @@ mock.module('@/lib/ai-provider', () => ({
   },
 }));
 
-mock.module('@/lib/supabase', () => ({
-  getSupabaseClient: () => ({
+mock.module('@/lib/supabase-server', () => ({
+  getSupabaseServerClient: async () => ({
+    auth: {
+      getUser: async () => ({
+        data: {
+          user: mockUserId ? { id: mockUserId } : null,
+        },
+        error: null,
+      }),
+    },
     from: () => ({
       select: () => ({
-        order: () => ({
-          limit: async () => ({ data: currentItems, error: null }),
+        eq: () => ({
+          order: () => ({
+            limit: async () => ({ data: currentItems, error: null }),
+          }),
         }),
       }),
     }),
@@ -60,6 +71,7 @@ const { POST } = await import('@/app/api/search/route');
 
 beforeEach(() => {
   aiCalls = [];
+  mockUserId = 'user-1';
   searchIntentPayload = null;
   searchRerankPayload = null;
   currentItems = [];
@@ -107,6 +119,25 @@ describe('/api/search POST', () => {
     expect(payload.timeRange).toBeNull();
     expect(payload.results).toHaveLength(1);
     expect(payload.results[0]?.item.id).toBe('advisor-event');
+  });
+
+  it('returns 401 when user is not authenticated', async () => {
+    mockUserId = null;
+
+    const response = await POST(
+      new Request('http://localhost/api/search', {
+        body: JSON.stringify({
+          locale: 'en-US',
+          mode: 'keyword',
+          query: 'advisor',
+          timezone: 'Asia/Shanghai',
+        }),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(401);
   });
 
   it('ignores AI date hallucinations for summary queries without explicit time hints', async () => {

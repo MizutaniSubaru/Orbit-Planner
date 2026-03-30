@@ -19,6 +19,7 @@ export type Database = {
           item_title: string;
           item_type: string;
           summary: string;
+          user_id?: string;
         };
         Insert: {
           action: string;
@@ -29,6 +30,7 @@ export type Database = {
           item_title: string;
           item_type: string;
           summary: string;
+          user_id?: string;
         };
         Update: {
           action?: string;
@@ -39,6 +41,7 @@ export type Database = {
           item_title?: string;
           item_type?: string;
           summary?: string;
+          user_id?: string;
         };
         Relationships: [];
       };
@@ -86,6 +89,7 @@ export type Database = {
           title: string;
           type: string;
           updated_at: string | null;
+          user_id?: string;
         };
         Insert: {
           created_at?: string | null;
@@ -106,6 +110,7 @@ export type Database = {
           title: string;
           type: string;
           updated_at?: string | null;
+          user_id?: string;
         };
         Update: {
           created_at?: string | null;
@@ -126,6 +131,7 @@ export type Database = {
           title?: string;
           type?: string;
           updated_at?: string | null;
+          user_id?: string;
         };
         Relationships: [];
       };

@@ -4,7 +4,7 @@ import {
     requestAiJson,
 } from '@/lib/ai-provider';
 import { DEFAULT_TIMEZONE } from '@/lib/constants';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 import type { Item, SearchHit, SearchMode, SearchResponse, SearchTimeRange } from '@/lib/types';
 
 type AiIntent = {
@@ -733,7 +733,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Query is required.' }, { status: 400 });
         }
 
-        const supabase = getSupabaseClient();
+        const supabase = await getSupabaseServerClient();
         if (!supabase) {
             return NextResponse.json(
                 { error: 'Supabase is not configured.' },
@@ -741,9 +741,19 @@ export async function POST(request: Request) {
             );
         }
 
+        const {
+            data: { user },
+            error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+            return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+        }
+
         const { data, error } = await supabase
             .from('items')
             .select('*')
+            .eq('user_id', user.id)
             .order('created_at', { ascending: false })
             .limit(1000);
 

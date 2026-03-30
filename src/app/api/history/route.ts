@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { buildUndoLog } from '@/lib/activity';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 import type { Json } from '@/lib/database.types';
 import type { ActivityLog, Item, ItemType } from '@/lib/types';
 
@@ -28,6 +28,8 @@ type ItemSnapshot = {
   start_at?: unknown;
   status?: unknown;
 };
+
+type SupabaseServerClient = NonNullable<Awaited<ReturnType<typeof getSupabaseServerClient>>>;
 
 function asText(value: unknown, fallback: string | null = null) {
   if (typeof value !== 'string') {
@@ -157,7 +159,8 @@ function isHistoryMarkerLog(log: ActivityLog) {
 }
 
 async function insertHistoryHideMarker(
-  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>,
+  supabase: SupabaseServerClient,
+  userId: string,
   hiddenLogIds: string[],
   reason: 'manual-delete' | 'undo-apply'
 ) {
@@ -181,6 +184,7 @@ async function insertHistoryHideMarker(
       reason === 'manual-delete'
         ? `Deleted ${uniqueIds.length} history log(s).`
         : `Applied undo to ${uniqueIds.length} history log(s).`,
+    user_id: userId,
   });
 
   if (error) {
@@ -232,13 +236,15 @@ function normalizeSnapshot(
 }
 
 async function fetchItemById(
-  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>,
-  itemId: string
+  supabase: SupabaseServerClient,
+  itemId: string,
+  userId: string
 ) {
   const { data, error } = await supabase
     .from('items')
     .select('*')
     .eq('id', itemId)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (error) {
@@ -249,12 +255,17 @@ async function fetchItemById(
 }
 
 async function applyItemTransition(
-  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>,
+  supabase: SupabaseServerClient,
   itemId: string,
+  userId: string,
   target: ReturnType<typeof normalizeSnapshot>
 ) {
   if (!target) {
-    const { error: deleteError } = await supabase.from('items').delete().eq('id', itemId);
+    const { error: deleteError } = await supabase
+      .from('items')
+      .delete()
+      .eq('id', itemId)
+      .eq('user_id', userId);
     if (deleteError) {
       throw deleteError;
     }
@@ -262,9 +273,13 @@ async function applyItemTransition(
     return null;
   }
 
-  const current = await fetchItemById(supabase, itemId);
+  const current = await fetchItemById(supabase, itemId, userId);
   if (current) {
-    const { error: updateError } = await supabase.from('items').update(target).eq('id', itemId);
+    const { error: updateError } = await supabase
+      .from('items')
+      .update(target)
+      .eq('id', itemId)
+      .eq('user_id', userId);
     if (updateError) {
       throw updateError;
     }
@@ -272,13 +287,14 @@ async function applyItemTransition(
     const { error: insertError } = await supabase.from('items').insert({
       ...target,
       id: itemId,
+      user_id: userId,
     });
     if (insertError) {
       throw insertError;
     }
   }
 
-  return await fetchItemById(supabase, itemId);
+  return await fetchItemById(supabase, itemId, userId);
 }
 
 function resolveUndoTargetSnapshot(log: ActivityLog, currentItem: Item | null) {
@@ -318,12 +334,21 @@ function parseLogIds(payload: unknown) {
 
 export async function GET(request: Request) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseServerClient();
     if (!supabase) {
       return NextResponse.json(
         { error: 'Supabase is not configured.' },
         { status: 500 }
       );
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -333,6 +358,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from('activity_logs')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(fetchSize);
 
@@ -372,12 +398,21 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseServerClient();
     if (!supabase) {
       return NextResponse.json(
         { error: 'Supabase is not configured.' },
         { status: 500 }
       );
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -391,6 +426,7 @@ export async function PATCH(request: Request) {
       .from('activity_logs')
       .select('*')
       .in('id', logIds)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -411,9 +447,9 @@ export async function PATCH(request: Request) {
           throw new Error('Log has no item id.');
         }
 
-        const beforeItem = await fetchItemById(supabase, log.item_id);
+        const beforeItem = await fetchItemById(supabase, log.item_id, user.id);
         const target = resolveUndoTargetSnapshot(log, beforeItem);
-        const afterItem = await applyItemTransition(supabase, log.item_id, target);
+        const afterItem = await applyItemTransition(supabase, log.item_id, user.id, target);
 
         const undoLog = buildUndoLog({
           afterItem,
@@ -424,7 +460,10 @@ export async function PATCH(request: Request) {
 
         const { error: insertUndoLogError } = await supabase
           .from('activity_logs')
-          .insert(undoLog);
+          .insert({
+            ...undoLog,
+            user_id: user.id,
+          });
 
         if (insertUndoLogError) {
           throw insertUndoLogError;
@@ -447,7 +486,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    await insertHistoryHideMarker(supabase, undoneLogIds, 'undo-apply');
+    await insertHistoryHideMarker(supabase, user.id, undoneLogIds, 'undo-apply');
 
     return NextResponse.json({
       failed,
@@ -462,12 +501,21 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseServerClient();
     if (!supabase) {
       return NextResponse.json(
         { error: 'Supabase is not configured.' },
         { status: 500 }
       );
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -480,7 +528,8 @@ export async function DELETE(request: Request) {
     const { data, error } = await supabase
       .from('activity_logs')
       .select('id')
-      .in('id', logIds);
+      .in('id', logIds)
+      .eq('user_id', user.id);
 
     if (error) {
       throw error;
@@ -491,7 +540,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'No matching history logs were found.' }, { status: 404 });
     }
 
-    await insertHistoryHideMarker(supabase, existingIds, 'manual-delete');
+    await insertHistoryHideMarker(supabase, user.id, existingIds, 'manual-delete');
 
     return NextResponse.json({
       deletedLogIds: existingIds,

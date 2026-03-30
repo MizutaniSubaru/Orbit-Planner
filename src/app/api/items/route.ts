@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { buildCreatedLog } from '@/lib/activity';
 import { normalizeCreatePayload } from '@/lib/item-payload';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 import type { Item } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseServerClient();
     if (!supabase) {
       return NextResponse.json(
         { error: 'Supabase is not configured.' },
@@ -14,12 +14,24 @@ export async function POST(request: Request) {
       );
     }
 
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+    }
+
     const body = await request.json();
     const normalized = normalizeCreatePayload(body);
 
     const { data: insertedData, error: insertError } = await supabase
       .from('items')
-      .insert(normalized)
+      .insert({
+        ...normalized,
+        user_id: user.id,
+      })
       .select('*')
       .single();
 
@@ -28,9 +40,10 @@ export async function POST(request: Request) {
     }
 
     const inserted = insertedData as Item;
-    const { error: logError } = await supabase.from('activity_logs').insert(
-      buildCreatedLog(inserted)
-    );
+    const { error: logError } = await supabase.from('activity_logs').insert({
+      ...buildCreatedLog(inserted),
+      user_id: user.id,
+    });
 
     if (logError) {
       throw logError;

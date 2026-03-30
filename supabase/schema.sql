@@ -19,6 +19,7 @@ values ('study', 'Study', '学习', '#4f7cff', 1),
   ('other', 'Other', '其他', '#7b6ef6', 5);
 create table public.items (
   id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
   type text not null check (type in ('todo', 'event')),
   title text not null,
   location text,
@@ -39,6 +40,7 @@ create table public.items (
 );
 create table public.activity_logs (
   id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
   action text not null check (
     action in ('created', 'updated', 'completed', 'deleted')
   ),
@@ -58,6 +60,8 @@ create table public.quotes (
   updated_at timestamptz not null default timezone('utc', now())
 );
 create index quotes_is_active_created_idx on public.quotes (is_active, created_at desc);
+create index items_user_created_idx on public.items (user_id, created_at desc);
+create index activity_logs_user_created_idx on public.activity_logs (user_id, created_at desc);
 create or replace function public.set_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = timezone('utc', now());
 return new;
 end;
@@ -73,14 +77,20 @@ alter table public.quotes enable row level security;
 create policy "groups_readable_by_anon" on public.groups for
 select to anon,
   authenticated using (true);
-create policy "items_manageable_by_anon" on public.items for all to anon,
-authenticated using (true) with check (true);
-create policy "activity_logs_readable_by_anon" on public.activity_logs for
-select to anon,
-  authenticated using (true);
-create policy "activity_logs_insertable_by_anon" on public.activity_logs for
-insert to anon,
-  authenticated with check (true);
+create policy "items_select_own" on public.items for
+select to authenticated using (auth.uid() = user_id);
+create policy "items_insert_own" on public.items for
+insert to authenticated with check (auth.uid() = user_id);
+create policy "items_update_own" on public.items for
+update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "items_delete_own" on public.items for delete to authenticated using (auth.uid() = user_id);
+create policy "activity_logs_select_own" on public.activity_logs for
+select to authenticated using (auth.uid() = user_id);
+create policy "activity_logs_insert_own" on public.activity_logs for
+insert to authenticated with check (auth.uid() = user_id);
+create policy "activity_logs_update_own" on public.activity_logs for
+update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "activity_logs_delete_own" on public.activity_logs for delete to authenticated using (auth.uid() = user_id);
 create policy "quotes_readable_by_anon" on public.quotes for
 select to anon,
   authenticated using (is_active = true);

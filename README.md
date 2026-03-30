@@ -162,6 +162,50 @@ Then copy Supabase values into `.env.local`:
 2. Copy `Project URL` to `NEXT_PUBLIC_SUPABASE_URL`
 3. Copy `anon public` key to `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
+#### Step 4.5: Configure Supabase Auth (Email + Google)
+
+1. Configure Auth URL settings in Supabase:
+   - Open `Supabase Dashboard -> Authentication -> URL Configuration`.
+   - Set `Site URL`:
+     - Local: `http://localhost:3000`
+     - Production: your Vercel domain (for example `https://your-app.vercel.app`).
+   - Add redirect URLs:
+     - `http://localhost:3000/auth/callback`
+     - `https://<your-vercel-domain>/auth/callback`
+     - `http://localhost:3000/auth/update-password`
+     - `https://<your-vercel-domain>/auth/update-password`
+
+2. Configure SMTP for confirmation/recovery emails in Supabase:
+   - Open `Supabase Dashboard -> Authentication -> Email -> SMTP Settings`.
+   - Enable custom SMTP and fill:
+     - `Host`: `smtp.gmail.com`
+     - `Port`: `587`
+     - `Username`: your sender Gmail address
+     - `Password`: Gmail App Password
+     - `Sender Name`: e.g. `Orbit Planner`
+     - `Sender Email`: your sender Gmail address
+     - `TLS`: enabled
+   - Save and send a test email.
+   - Security note: keep SMTP password only in Supabase/Vercel secrets, never commit it to Git.
+
+3. Configure Google Provider in Supabase:
+   - Open `Google Cloud Console -> APIs & Services -> Credentials`.
+   - Create `OAuth 2.0 Client ID` with application type `Web application`.
+   - Add Authorized JavaScript origins:
+     - `http://localhost:3000`
+     - `https://<your-vercel-domain>`
+   - Add Authorized redirect URI:
+     - `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
+   - Copy `Client ID` and `Client Secret` into
+     `Supabase Dashboard -> Authentication -> Providers -> Google`.
+   - Enable the provider and save.
+
+4. Existing deployed database migration (important):
+   - Because this project originally used shared data, run
+     [supabase/user-isolation.migration.sql](./supabase/user-isolation.migration.sql)
+     in Supabase SQL Editor before enabling auth-only traffic.
+   - This migration clears legacy shared `items` and `activity_logs`, then enables owner-only RLS.
+
 #### Step 5: Run the Project
 
 ```bash

@@ -34,14 +34,14 @@ Orbit Planner 帮助学生将非结构化输入整理为可执行的学习计划
 
 ### 3. 技术栈
 
-| 分层    | 技术栈                                                            |
-| ------- | ----------------------------------------------------------------- |
-| 前端    | Next.js 16、React 19、TypeScript、Tailwind CSS 4、Framer Motion   |
-| 后端    | Next.js App Router API Routes（Node runtime）、Bun                |
-| 数据库  | Supabase（PostgreSQL + RLS）                                      |
+| 分层    | 技术栈                                                           |
+| ------- | ---------------------------------------------------------------- |
+| 前端    | Next.js 16、React 19、TypeScript、Tailwind CSS 4、Framer Motion  |
+| 后端    | Next.js App Router API Routes（Node runtime）、Bun               |
+| 数据库  | Supabase（PostgreSQL + RLS）                                     |
 | AI/NLP  | 通过 OpenAI 兼容接口接入 MiniMax，并可选使用 OpenAI 兼容回退方案 |
-| OCR/PDF | Tesseract.js、pdfjs-dist、@napi-rs/canvas                         |
-| 日历/UI | FullCalendar、lucide-react、@ncdai/react-wheel-picker             |
+| OCR/PDF | Tesseract.js、pdfjs-dist、@napi-rs/canvas                        |
+| 日历/UI | FullCalendar、lucide-react、@ncdai/react-wheel-picker            |
 
 ### 4. 项目结构
 
@@ -160,6 +160,48 @@ Copy-Item .env.example .env.local
 1. 在 Supabase 控制台进入 `Settings` -> `API`
 2. 将 `Project URL` 复制到 `NEXT_PUBLIC_SUPABASE_URL`
 3. 将 `anon public` key 复制到 `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+#### 第 4.5 步：配置 Supabase 认证（邮箱 + Google）
+
+1. 在 Supabase 配置认证回调地址：
+   - 打开 `Supabase Dashboard -> Authentication -> URL Configuration`。
+   - 设置 `Site URL`：
+     - 本地：`http://localhost:3000`
+     - 线上：你的 Vercel 域名（例如 `https://your-app.vercel.app`）。
+   - 添加 Redirect URLs：
+     - `http://localhost:3000/auth/callback`
+     - `https://<你的 vercel 域名>/auth/callback`
+     - `http://localhost:3000/auth/update-password`
+     - `https://<你的 vercel 域名>/auth/update-password`
+
+2. 在 Supabase 配置 SMTP（用于注册确认邮件和密码重置邮件）：
+   - 打开 `Supabase Dashboard -> Authentication -> Email -> SMTP Settings`。
+   - 开启自定义 SMTP，并填写：
+     - `Host`：`smtp.gmail.com`
+     - `Port`：`587`
+     - `Username`：发件 Gmail 邮箱
+     - `Password`：Gmail App Password（应用专用密码）
+     - `Sender Name`：例如 `Orbit Planner`
+     - `Sender Email`：发件 Gmail 邮箱
+     - `TLS`：开启
+   - 保存后发送测试邮件。
+   - 安全建议：SMTP 密码仅放在 Supabase/Vercel 的密钥管理中，不要提交到 Git。
+
+3. 在 Supabase 配置 Google 登录 Provider：
+   - 打开 `Google Cloud Console -> APIs & Services -> Credentials`。
+   - 创建 `OAuth Client ID`，应用类型选 `Web application`。
+   - 添加 Authorized JavaScript origins：
+     - `http://localhost:3000`
+     - `https://<你的 vercel 域名>`
+   - 添加 Authorized redirect URI：
+     - `https://<你的 supabase project ref>.supabase.co/auth/v1/callback`
+   - 把 `Client ID` 与 `Client Secret` 填入
+     `Supabase Dashboard -> Authentication -> Providers -> Google`，启用并保存。
+
+4. 已部署项目的数据库迁移（重要）：
+   - 因为项目最初是共享数据模型，请先在 Supabase SQL Editor 运行
+     [supabase/user-isolation.migration.sql](./supabase/user-isolation.migration.sql)。
+   - 该脚本会清理旧共享 `items` / `activity_logs`，并切换到 owner-only RLS。
 
 #### 第 5 步：运行项目
 

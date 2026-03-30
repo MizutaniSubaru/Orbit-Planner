@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   startTransition,
   useCallback,
@@ -1512,10 +1513,13 @@ function EmptyWorkspace({ copy }: { copy: typeof COPY.en }) {
 }
 
 export function PlannerApp() {
+  const router = useRouter();
   const supabase = getSupabaseClient();
   const configured = isSupabaseConfigured();
   const [locale, setLocale] = useState('zh-CN');
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
+  const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
+  const [authActionBusy, setAuthActionBusy] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [composerText, setComposerText] = useState('');
@@ -1609,6 +1613,31 @@ export function PlannerApp() {
       setTimezone(DEFAULT_TIMEZONE);
     }
   }, []);
+
+  useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
+    let active = true;
+
+    void supabase.auth.getUser().then(({ data }) => {
+      if (active) {
+        setAuthUserEmail(data.user?.email ?? null);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUserEmail(session?.user?.email ?? null);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const loadWorkspace = useCallback(async () => {
     if (!supabase) {
@@ -1879,10 +1908,43 @@ export function PlannerApp() {
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      if (response.status === 401) {
+        router.replace('/auth');
+      }
       throw new Error(payload.error || 'Request failed.');
     }
 
     return payload;
+  }
+
+  async function handleAuthButtonClick() {
+    if (!supabase) {
+      router.push('/auth');
+      return;
+    }
+
+    if (!authUserEmail) {
+      router.push('/auth');
+      return;
+    }
+
+    setAuthActionBusy(true);
+    setMessage(null);
+
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
+
+      setAuthUserEmail(null);
+      router.replace('/auth');
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to sign out.');
+    } finally {
+      setAuthActionBusy(false);
+    }
   }
 
   function normalizeParseResults(payload: ParseResponse) {
@@ -2835,6 +2897,26 @@ export function PlannerApp() {
             type="button"
           >
             {copy.actions.refresh}
+          </MotionButton>
+
+          <MotionButton
+            className="planner-button planner-button--ghost planner-button--auth-compact"
+            disabled={authActionBusy}
+            onClick={() => void handleAuthButtonClick()}
+            title={authUserEmail || ''}
+            type="button"
+          >
+            {authActionBusy
+              ? locale.startsWith('zh')
+                ? '\u5904\u7406\u4e2d...'
+                : 'Working...'
+              : authUserEmail
+                ? locale.startsWith('zh')
+                  ? '\u9000\u51fa\u767b\u5f55'
+                  : 'Sign out'
+                : locale.startsWith('zh')
+                  ? '\u767b\u5f55'
+                  : 'Login'}
           </MotionButton>
         </div>
       </section>

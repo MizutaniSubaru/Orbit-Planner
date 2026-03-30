@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { buildDeletedLog, buildUpdatedLog } from '@/lib/activity';
 import { normalizeUpdatePayload } from '@/lib/item-payload';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 import type { Item } from '@/lib/types';
 
 type RouteParams = {
@@ -12,12 +12,21 @@ type RouteParams = {
 
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseServerClient();
     if (!supabase) {
       return NextResponse.json(
         { error: 'Supabase is not configured.' },
         { status: 500 }
       );
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 
     const [{ id }, body] = await Promise.all([params, request.json()]);
@@ -26,6 +35,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       .from('items')
       .select('*')
       .eq('id', id)
+      .eq('user_id', user.id)
       .single();
 
     if (currentItemError || !currentItem) {
@@ -39,6 +49,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       .from('items')
       .update(normalized)
       .eq('id', id)
+      .eq('user_id', user.id)
       .select('*')
       .single();
 
@@ -49,7 +60,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const updated = updatedData as Item;
     const { error: logError } = await supabase
       .from('activity_logs')
-      .insert(buildUpdatedLog(existingItem, updated));
+      .insert({
+        ...buildUpdatedLog(existingItem, updated),
+        user_id: user.id,
+      });
 
     if (logError) {
       throw logError;
@@ -64,12 +78,21 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
 export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseServerClient();
     if (!supabase) {
       return NextResponse.json(
         { error: 'Supabase is not configured.' },
         { status: 500 }
       );
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -78,6 +101,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       .from('items')
       .select('*')
       .eq('id', id)
+      .eq('user_id', user.id)
       .single();
 
     if (currentItemError || !currentItem) {
@@ -88,13 +112,20 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
 
     const { error: logError } = await supabase
       .from('activity_logs')
-      .insert(buildDeletedLog(existingItem));
+      .insert({
+        ...buildDeletedLog(existingItem),
+        user_id: user.id,
+      });
 
     if (logError) {
       throw logError;
     }
 
-    const { error: deleteError } = await supabase.from('items').delete().eq('id', id);
+    const { error: deleteError } = await supabase
+      .from('items')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (deleteError) {
       throw deleteError;
