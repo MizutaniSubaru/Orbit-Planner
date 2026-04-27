@@ -8,8 +8,8 @@ mock.module('@/lib/ai-provider', () => ({
   getAiConfig: () => ({
     apiKey: 'test-key',
     baseURL: 'https://example.test/v1',
-    candidateModels: ['MiniMax-M2.7'],
-    model: 'MiniMax-M2.7',
+    candidateModels: ['kimi-k2.6'],
+    model: 'kimi-k2.6',
     task: 'parse' as const,
   }),
   logAiJsonMetrics: () => {},

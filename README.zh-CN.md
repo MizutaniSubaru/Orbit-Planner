@@ -39,7 +39,7 @@ Orbit Planner 帮助学生将非结构化输入整理为可执行的学习计划
 | 前端    | Next.js 16、React 19、TypeScript、Tailwind CSS 4、Framer Motion  |
 | 后端    | Next.js App Router API Routes（Node runtime）、Bun               |
 | 数据库  | Supabase（PostgreSQL + RLS）                                     |
-| AI/NLP  | 通过 OpenAI 兼容接口接入 MiniMax，并可选使用 OpenAI 兼容回退方案 |
+| AI/NLP  | 通过 Moonshot/OpenAI 兼容接口接入 Kimi，并可选使用 OpenAI 兼容回退方案 |
 | OCR/PDF | Tesseract.js、pdfjs-dist、@napi-rs/canvas                        |
 | 日历/UI | FullCalendar、lucide-react、@ncdai/react-wheel-picker            |
 
@@ -97,7 +97,7 @@ bun install
 
 1. Bun `1.3.11+`
 2. 一个 Supabase 项目
-3. 可选：用于增强解析效果的 MiniMax/OpenAI 兼容 API Key
+3. 可选：用于增强解析效果的 Kimi/Moonshot API Key
 
 #### 第 1 步：克隆并进入项目
 
@@ -133,12 +133,12 @@ Copy-Item .env.example .env.local
 
 可选 AI 变量（推荐配置以获得更好的 NLP 效果）：
 
-- `MINIMAX_API_KEY`
-- `MINIMAX_BASE_URL`
-- `MINIMAX_MODEL`
-- `MINIMAX_PARSE_MODEL`
-- `MINIMAX_SEARCH_INTENT_MODEL`
-- `MINIMAX_SEARCH_RERANK_MODEL`
+- `KIMI_API_KEY`
+- `KIMI_BASE_URL`
+- `KIMI_MODEL`
+- `KIMI_PARSE_MODEL`
+- `KIMI_SEARCH_INTENT_MODEL`
+- `KIMI_SEARCH_RERANK_MODEL`
 - 可选的 token cap 配置见 `.env.example`
 
 如果没有配置 AI Key，应用仍可在本地使用启发式回退解析正常运行。
@@ -227,7 +227,7 @@ bun run build
 2. Supabase 数据没有加载：
    重新检查 `NEXT_PUBLIC_SUPABASE_URL` 和 `NEXT_PUBLIC_SUPABASE_ANON_KEY`。
 3. AI 解析效果较差：
-   确认已配置 `MINIMAX_API_KEY`，否则会使用回退解析器。
+   确认已配置 `KIMI_API_KEY`，否则会使用回退解析器。
 4. Windows 本地开发稳定性：
    `bun run dev` 已在 `package.json` 中使用 webpack 模式。
 
