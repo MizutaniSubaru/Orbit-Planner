@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { parseMultipleInputWithAi } from '@/lib/parse';
+import { AiParseError, parseMultipleInputWithAi } from '@/lib/parse';
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +20,31 @@ export async function POST(request: Request) {
 
     return NextResponse.json(parsed);
   } catch (error) {
+    if (error instanceof AiParseError) {
+      console.error(
+        '[kimi-parse]',
+        JSON.stringify({
+          baseURL: error.baseURL,
+          code: error.code,
+          message: error.message,
+          model: error.model,
+          provider: error.provider,
+          reason: error.cause instanceof Error ? error.cause.message : undefined,
+          task: error.task,
+        })
+      );
+
+      return NextResponse.json(
+        {
+          code: error.code,
+          error: error.message,
+          model: error.model,
+          provider: error.provider,
+        },
+        { status: error.status }
+      );
+    }
+
     const message =
       error instanceof Error ? error.message : 'Failed to parse planning request.';
 

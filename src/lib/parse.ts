@@ -3,6 +3,7 @@ import {
   logAiJsonMetrics,
   requestAiJson,
 } from '@/lib/ai-provider';
+import type { AiConfig } from '@/lib/ai-provider';
 import {
   DEFAULT_TIMEZONE,
   MONTH_NAMES_EN,
@@ -37,6 +38,30 @@ type SplitSchedulesPayload = {
   items?: unknown;
   schedules?: unknown;
 };
+
+export class AiParseError extends Error {
+  baseURL: string;
+  code = 'kimi_parse_failed' as const;
+  cause?: unknown;
+  model: string;
+  provider: AiConfig['provider'];
+  status = 502;
+  task: 'parse';
+
+  constructor(message: string, config: AiConfig, cause?: unknown) {
+    super(message);
+    this.name = 'AiParseError';
+    this.baseURL = config.baseURL;
+    this.cause = cause;
+    this.model = config.model;
+    this.provider = config.provider;
+    this.task = 'parse';
+  }
+}
+
+function getErrorReason(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown Kimi parse error';
+}
 
 export type TemporalIntentKind =
   | 'none'
@@ -1280,23 +1305,25 @@ export async function parseInputWithAi(input: {
     if (payload) {
       return buildParseResponse('ai', normalizeParseResult(payload, text, timezone), timezone);
     }
-  } catch {
+  } catch (error) {
     logAiJsonMetrics({
       fastPath: false,
       outcome: 'skip',
-      reason: 'parse_request_failed_fallback',
+      reason: `parse_request_failed: ${getErrorReason(error)}`,
       task: 'parse',
     });
+
+    throw new AiParseError('Kimi parse request failed.', aiConfig, error);
   }
 
   logAiJsonMetrics({
     fastPath: false,
     outcome: 'skip',
-    reason: 'empty_ai_payload_fallback',
+    reason: 'empty_ai_payload',
     task: 'parse',
   });
 
-  return buildParseResponse('fallback', fallback, timezone);
+  throw new AiParseError('Kimi parse returned an empty response.', aiConfig);
 }
 
 export async function parseMultipleInputWithAi(input: {
@@ -1328,15 +1355,31 @@ export async function parseMultipleInputWithAi(input: {
         task: 'parse',
       });
 
+      if (!splitPayload) {
+        logAiJsonMetrics({
+          fastPath: false,
+          outcome: 'skip',
+          reason: 'multi_schedule_split_empty',
+          task: 'parse',
+        });
+
+        throw new AiParseError('Kimi schedule split returned an empty response.', aiConfig);
+      }
+
       scheduleTexts = normalizeSplitSchedules(splitPayload, trimmed);
-    } catch {
+    } catch (error) {
+      if (error instanceof AiParseError) {
+        throw error;
+      }
+
       logAiJsonMetrics({
         fastPath: false,
         outcome: 'skip',
-        reason: 'multi_schedule_split_failed',
+        reason: `multi_schedule_split_failed: ${getErrorReason(error)}`,
         task: 'parse',
       });
-      scheduleTexts = normalizeSplitSchedules(null, trimmed);
+
+      throw new AiParseError('Kimi schedule split request failed.', aiConfig, error);
     }
   } else {
     scheduleTexts = normalizeSplitSchedules(null, trimmed);

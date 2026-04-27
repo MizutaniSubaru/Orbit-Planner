@@ -51,11 +51,14 @@ type AiJsonTask = keyof typeof TASK_MAX_COMPLETION_TOKENS;
 
 export type AiTask = keyof typeof TASK_MODEL_ENV_KEYS;
 
+export type AiProvider = 'kimi';
+
 export type AiConfig = {
   apiKey: string | undefined;
   baseURL: string;
   candidateModels: string[];
   model: string;
+  provider: AiProvider;
   task: AiTask;
 };
 
@@ -135,12 +138,19 @@ function getUsageMetric(source: unknown, path: string[]) {
 }
 
 export function getAiConfig(task: AiTask = 'default'): AiConfig {
-  const apiKey = process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY || process.env.OPENAI_API_KEY;
+  const isParseTask = task === 'parse';
+  const apiKey = isParseTask
+    ? process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY
+    : process.env.KIMI_API_KEY ||
+      process.env.MOONSHOT_API_KEY ||
+      process.env.OPENAI_API_KEY;
   const baseURL =
-    process.env.KIMI_BASE_URL ||
-    process.env.MOONSHOT_BASE_URL ||
-    process.env.OPENAI_BASE_URL ||
-    DEFAULT_KIMI_BASE_URL;
+    isParseTask
+      ? process.env.KIMI_BASE_URL || process.env.MOONSHOT_BASE_URL || DEFAULT_KIMI_BASE_URL
+      : process.env.KIMI_BASE_URL ||
+        process.env.MOONSHOT_BASE_URL ||
+        process.env.OPENAI_BASE_URL ||
+        DEFAULT_KIMI_BASE_URL;
   const configuredGlobalModel = getConfiguredGlobalModel();
   const model = getTaskModel(task);
   const candidateModels = uniqueNonEmpty([
@@ -154,6 +164,7 @@ export function getAiConfig(task: AiTask = 'default'): AiConfig {
     baseURL,
     candidateModels,
     model,
+    provider: 'kimi',
     task,
   };
 }
