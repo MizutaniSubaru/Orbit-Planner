@@ -3,8 +3,10 @@ import type { APIError } from 'openai/error';
 
 const DEFAULT_KIMI_BASE_URL = 'https://api.moonshot.cn/v1';
 const DEFAULT_KIMI_MODEL = 'kimi-k2.6';
+const DEFAULT_KIMI_FAST_MODEL = 'kimi-k2-turbo-preview';
 const KIMI_MODEL_FALLBACKS = [
   'kimi-k2.6',
+  'kimi-k2-turbo-preview',
   'kimi-k2.5',
   'kimi-k2',
 ] as const;
@@ -20,7 +22,7 @@ const TASK_MODEL_ENV_KEYS = {
 const TASK_DEFAULT_MODELS = {
   default: DEFAULT_KIMI_MODEL,
   notes: DEFAULT_KIMI_MODEL,
-  parse: DEFAULT_KIMI_MODEL,
+  parse: DEFAULT_KIMI_FAST_MODEL,
   'search-intent': DEFAULT_KIMI_MODEL,
   'search-rerank': DEFAULT_KIMI_MODEL,
 } as const;
@@ -103,6 +105,10 @@ function getConfiguredGlobalModel() {
 function getTaskModel(task: AiTask) {
   if (task === 'default') {
     return getConfiguredGlobalModel() || TASK_DEFAULT_MODELS.default;
+  }
+
+  if (task === 'parse') {
+    return readFirstEnv(TASK_MODEL_ENV_KEYS.parse) || TASK_DEFAULT_MODELS.parse;
   }
 
   return (

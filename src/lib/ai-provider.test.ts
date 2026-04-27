@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 describe('ai provider config', () => {
-  it('defaults parse requests to Kimi when no task model is configured', () => {
+  it('defaults parse requests to the fast Kimi model when no task model is configured', () => {
     delete process.env.KIMI_PARSE_MODEL;
     process.env.KIMI_MODEL = 'kimi-k2.6';
     delete process.env.MOONSHOT_MODEL;
@@ -36,7 +36,8 @@ describe('ai provider config', () => {
 
     const config = getAiConfig('parse');
 
-    expect(config.model).toBe('kimi-k2.6');
+    expect(config.model).toBe('kimi-k2-turbo-preview');
+    expect(config.candidateModels[0]).toBe('kimi-k2-turbo-preview');
     expect(config.candidateModels).toContain('kimi-k2.6');
   });
 
@@ -47,7 +48,12 @@ describe('ai provider config', () => {
     const config = getAiConfig('notes');
 
     expect(config.model).toBe('kimi-k2.5');
-    expect(config.candidateModels).toEqual(['kimi-k2.5', 'kimi-k2.6', 'kimi-k2']);
+    expect(config.candidateModels).toEqual([
+      'kimi-k2.5',
+      'kimi-k2.6',
+      'kimi-k2-turbo-preview',
+      'kimi-k2',
+    ]);
   });
 
   it('uses Moonshot model env vars before generic OpenAI-compatible vars', () => {
@@ -58,7 +64,12 @@ describe('ai provider config', () => {
     const config = getAiConfig();
 
     expect(config.model).toBe('kimi-k2.5');
-    expect(config.candidateModels).toEqual(['kimi-k2.5', 'kimi-k2.6', 'kimi-k2']);
+    expect(config.candidateModels).toEqual([
+      'kimi-k2.5',
+      'kimi-k2.6',
+      'kimi-k2-turbo-preview',
+      'kimi-k2',
+    ]);
   });
 
   it('uses a larger default completion token budget for parse', () => {
@@ -80,7 +91,12 @@ describe('ai provider config', () => {
     const config = getAiConfig('search-intent');
 
     expect(config.model).toBe('kimi-k2.5');
-    expect(config.candidateModels).toEqual(['kimi-k2.5', 'kimi-k2.6', 'kimi-k2']);
+    expect(config.candidateModels).toEqual([
+      'kimi-k2.5',
+      'kimi-k2.6',
+      'kimi-k2-turbo-preview',
+      'kimi-k2',
+    ]);
   });
 
   it('treats unsupported model errors as retryable', () => {
