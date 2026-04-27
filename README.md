@@ -40,7 +40,7 @@ This project is designed as a practical hackathon product: fast setup, low frict
 | Frontend    | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Framer Motion        |
 | Backend     | Next.js App Router API Routes (Node runtime), Bun                      |
 | Database    | Supabase (PostgreSQL + RLS)                                            |
-| AI/NLP      | MiniMax via OpenAI-compatible API, optional OpenAI-compatible fallback |
+| AI/NLP      | Kimi via Moonshot/OpenAI-compatible API, optional OpenAI-compatible fallback |
 | OCR/PDF     | Tesseract.js, pdfjs-dist, @napi-rs/canvas                              |
 | Calendar/UI | FullCalendar, lucide-react, @ncdai/react-wheel-picker                  |
 
@@ -98,7 +98,7 @@ bun install
 
 1. Bun `1.3.11+`
 2. A Supabase project
-3. Optional: MiniMax/OpenAI-compatible API key for AI-enhanced parsing
+3. Optional: Kimi/Moonshot API key for AI-enhanced parsing
 
 #### Step 1: Clone and Enter Project
 
@@ -134,12 +134,12 @@ Required variables:
 
 Optional AI variables (recommended for best NLP quality):
 
-- `MINIMAX_API_KEY`
-- `MINIMAX_BASE_URL`
-- `MINIMAX_MODEL`
-- `MINIMAX_PARSE_MODEL`
-- `MINIMAX_SEARCH_INTENT_MODEL`
-- `MINIMAX_SEARCH_RERANK_MODEL`
+- `KIMI_API_KEY`
+- `KIMI_BASE_URL`
+- `KIMI_MODEL`
+- `KIMI_PARSE_MODEL`
+- `KIMI_SEARCH_INTENT_MODEL`
+- `KIMI_SEARCH_RERANK_MODEL`
 - Optional token caps in `.env.example`
 
 If AI keys are not configured, the app can still run with heuristic fallback parsing for local use.
@@ -230,7 +230,7 @@ bun run build
 2. Supabase data is not loading:
    Re-check `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 3. AI parsing quality is low:
-   Confirm `MINIMAX_API_KEY` is configured; otherwise fallback parser is used.
+   Confirm `KIMI_API_KEY` is configured; otherwise fallback parser is used.
 4. Windows local stability:
    `bun run dev` already uses webpack mode in `package.json`.
 

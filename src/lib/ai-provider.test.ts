@@ -2,97 +2,90 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import { getAiConfig, getAiMaxCompletionTokens, isRetryableModelError } from '@/lib/ai-provider';
 
 const ORIGINAL_ENV = {
-  MINIMAX_MODEL: process.env.MINIMAX_MODEL,
-  MINIMAX_NOTES_MAX_COMPLETION_TOKENS: process.env.MINIMAX_NOTES_MAX_COMPLETION_TOKENS,
-  MINIMAX_NOTES_MODEL: process.env.MINIMAX_NOTES_MODEL,
-  MINIMAX_PARSE_MAX_COMPLETION_TOKENS: process.env.MINIMAX_PARSE_MAX_COMPLETION_TOKENS,
-  MINIMAX_PARSE_MODEL: process.env.MINIMAX_PARSE_MODEL,
-  MINIMAX_SEARCH_INTENT_MAX_COMPLETION_TOKENS:
-    process.env.MINIMAX_SEARCH_INTENT_MAX_COMPLETION_TOKENS,
-  MINIMAX_SEARCH_INTENT_MODEL: process.env.MINIMAX_SEARCH_INTENT_MODEL,
+  KIMI_MODEL: process.env.KIMI_MODEL,
+  KIMI_NOTES_MAX_COMPLETION_TOKENS: process.env.KIMI_NOTES_MAX_COMPLETION_TOKENS,
+  KIMI_NOTES_MODEL: process.env.KIMI_NOTES_MODEL,
+  KIMI_PARSE_MAX_COMPLETION_TOKENS: process.env.KIMI_PARSE_MAX_COMPLETION_TOKENS,
+  KIMI_PARSE_MODEL: process.env.KIMI_PARSE_MODEL,
+  KIMI_SEARCH_INTENT_MAX_COMPLETION_TOKENS:
+    process.env.KIMI_SEARCH_INTENT_MAX_COMPLETION_TOKENS,
+  KIMI_SEARCH_INTENT_MODEL: process.env.KIMI_SEARCH_INTENT_MODEL,
+  MOONSHOT_MODEL: process.env.MOONSHOT_MODEL,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
 };
 
 afterEach(() => {
-  process.env.MINIMAX_MODEL = ORIGINAL_ENV.MINIMAX_MODEL;
-  process.env.MINIMAX_NOTES_MAX_COMPLETION_TOKENS = ORIGINAL_ENV.MINIMAX_NOTES_MAX_COMPLETION_TOKENS;
-  process.env.MINIMAX_NOTES_MODEL = ORIGINAL_ENV.MINIMAX_NOTES_MODEL;
-  process.env.MINIMAX_PARSE_MAX_COMPLETION_TOKENS = ORIGINAL_ENV.MINIMAX_PARSE_MAX_COMPLETION_TOKENS;
-  process.env.MINIMAX_PARSE_MODEL = ORIGINAL_ENV.MINIMAX_PARSE_MODEL;
-  process.env.MINIMAX_SEARCH_INTENT_MAX_COMPLETION_TOKENS =
-    ORIGINAL_ENV.MINIMAX_SEARCH_INTENT_MAX_COMPLETION_TOKENS;
-  process.env.MINIMAX_SEARCH_INTENT_MODEL = ORIGINAL_ENV.MINIMAX_SEARCH_INTENT_MODEL;
+  process.env.KIMI_MODEL = ORIGINAL_ENV.KIMI_MODEL;
+  process.env.KIMI_NOTES_MAX_COMPLETION_TOKENS = ORIGINAL_ENV.KIMI_NOTES_MAX_COMPLETION_TOKENS;
+  process.env.KIMI_NOTES_MODEL = ORIGINAL_ENV.KIMI_NOTES_MODEL;
+  process.env.KIMI_PARSE_MAX_COMPLETION_TOKENS = ORIGINAL_ENV.KIMI_PARSE_MAX_COMPLETION_TOKENS;
+  process.env.KIMI_PARSE_MODEL = ORIGINAL_ENV.KIMI_PARSE_MODEL;
+  process.env.KIMI_SEARCH_INTENT_MAX_COMPLETION_TOKENS =
+    ORIGINAL_ENV.KIMI_SEARCH_INTENT_MAX_COMPLETION_TOKENS;
+  process.env.KIMI_SEARCH_INTENT_MODEL = ORIGINAL_ENV.KIMI_SEARCH_INTENT_MODEL;
+  process.env.MOONSHOT_MODEL = ORIGINAL_ENV.MOONSHOT_MODEL;
   process.env.OPENAI_MODEL = ORIGINAL_ENV.OPENAI_MODEL;
 });
 
 describe('ai provider config', () => {
-  it('does not default parse fallback candidates to highspeed models', () => {
-    delete process.env.MINIMAX_PARSE_MODEL;
-    process.env.MINIMAX_MODEL = 'MiniMax-M2.7';
+  it('defaults parse requests to Kimi when no task model is configured', () => {
+    delete process.env.KIMI_PARSE_MODEL;
+    process.env.KIMI_MODEL = 'kimi-k2.6';
+    delete process.env.MOONSHOT_MODEL;
     delete process.env.OPENAI_MODEL;
 
     const config = getAiConfig('parse');
 
-    expect(config.model).toBe('MiniMax-M2.7');
-    expect(config.candidateModels).not.toContain('MiniMax-M2.7-highspeed');
+    expect(config.model).toBe('kimi-k2.6');
+    expect(config.candidateModels).toContain('kimi-k2.6');
   });
 
-  it('normalizes an explicitly configured notes highspeed model to its non-highspeed pair', () => {
-    process.env.MINIMAX_NOTES_MODEL = 'MiniMax-M2.7-highspeed';
-    process.env.MINIMAX_MODEL = 'MiniMax-M2.5-highspeed';
+  it('prefers an explicitly configured notes model over the global Kimi model', () => {
+    process.env.KIMI_NOTES_MODEL = 'kimi-k2.5';
+    process.env.KIMI_MODEL = 'kimi-k2.6';
 
     const config = getAiConfig('notes');
 
-    expect(config.model).toBe('MiniMax-M2.7');
-    expect(config.candidateModels).toContain('MiniMax-M2.7');
-    expect(config.candidateModels).not.toContain('MiniMax-M2.7-highspeed');
-    expect(config.candidateModels).not.toContain('MiniMax-M2.5-highspeed');
+    expect(config.model).toBe('kimi-k2.5');
+    expect(config.candidateModels).toEqual(['kimi-k2.5', 'kimi-k2.6', 'kimi-k2']);
   });
 
-  it('normalizes an explicitly configured parse highspeed model to its non-highspeed pair', () => {
-    process.env.MINIMAX_PARSE_MODEL = 'MiniMax-M2.7-highspeed';
-    process.env.MINIMAX_MODEL = 'MiniMax-M2.5-highspeed';
+  it('uses Moonshot model env vars before generic OpenAI-compatible vars', () => {
+    delete process.env.KIMI_MODEL;
+    process.env.MOONSHOT_MODEL = 'kimi-k2.5';
+    process.env.OPENAI_MODEL = 'gpt-4.1-mini';
 
-    const config = getAiConfig('parse');
+    const config = getAiConfig();
 
-    expect(config.model).toBe('MiniMax-M2.7');
-    expect(config.candidateModels).toContain('MiniMax-M2.7');
-    expect(config.candidateModels).not.toContain('MiniMax-M2.7-highspeed');
-    expect(config.candidateModels).not.toContain('MiniMax-M2.5-highspeed');
+    expect(config.model).toBe('kimi-k2.5');
+    expect(config.candidateModels).toEqual(['kimi-k2.5', 'kimi-k2.6', 'kimi-k2']);
   });
 
   it('uses a larger default completion token budget for parse', () => {
-    delete process.env.MINIMAX_PARSE_MAX_COMPLETION_TOKENS;
+    delete process.env.KIMI_PARSE_MAX_COMPLETION_TOKENS;
 
     expect(getAiMaxCompletionTokens('parse')).toBe(512);
   });
 
   it('uses a dedicated default completion token budget for notes generation', () => {
-    delete process.env.MINIMAX_NOTES_MAX_COMPLETION_TOKENS;
+    delete process.env.KIMI_NOTES_MAX_COMPLETION_TOKENS;
 
     expect(getAiMaxCompletionTokens('notes')).toBe(1536);
   });
 
-  it('prefers non-highspeed search models before highspeed fallbacks', () => {
-    delete process.env.MINIMAX_SEARCH_INTENT_MODEL;
-    process.env.MINIMAX_MODEL = 'MiniMax-M2.7-highspeed';
+  it('uses a configured Kimi search model before fallback candidates', () => {
+    process.env.KIMI_SEARCH_INTENT_MODEL = 'kimi-k2.5';
+    process.env.KIMI_MODEL = 'kimi-k2.6';
 
     const config = getAiConfig('search-intent');
-    const firstHighspeedIndex = config.candidateModels.findIndex((model) =>
-      model.includes('highspeed')
-    );
-    const lastStandardIndex = config.candidateModels.findLastIndex(
-      (model) => !model.includes('highspeed')
-    );
 
-    expect(config.model).toBe('MiniMax-M2.5');
-    expect(config.candidateModels[0]).toBe('MiniMax-M2.5');
-    expect(firstHighspeedIndex).toBeGreaterThan(lastStandardIndex);
+    expect(config.model).toBe('kimi-k2.5');
+    expect(config.candidateModels).toEqual(['kimi-k2.5', 'kimi-k2.6', 'kimi-k2']);
   });
 
   it('treats unsupported model errors as retryable', () => {
     expect(
-      isRetryableModelError(new Error('500 your current token plan not support model, MiniMax-M2.7-highspeed (2061)'))
+      isRetryableModelError(new Error('model kimi-k2.0 is not supported by your token plan'))
     ).toBe(true);
   });
 });

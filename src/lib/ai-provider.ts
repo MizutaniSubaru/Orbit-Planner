@@ -1,34 +1,28 @@
 import { OpenAI } from 'openai';
 import type { APIError } from 'openai/error';
 
-const DEFAULT_MINIMAX_BASE_URL = 'https://api.minimaxi.com/v1';
-const DEFAULT_MINIMAX_MODEL = 'MiniMax-M2.7';
-const DEFAULT_JSON_TASK_MODEL = DEFAULT_MINIMAX_MODEL;
-const DEFAULT_SEARCH_TASK_MODEL = 'MiniMax-M2.5';
-const MINIMAX_MODEL_FALLBACKS = [
-  'MiniMax-M2.7',
-  'MiniMax-M2.7-highspeed',
-  'MiniMax-M2.5',
-  'MiniMax-M2.5-highspeed',
-  'MiniMax-M2.1',
-  'MiniMax-M2.1-highspeed',
-  'MiniMax-M2',
+const DEFAULT_KIMI_BASE_URL = 'https://api.moonshot.cn/v1';
+const DEFAULT_KIMI_MODEL = 'kimi-k2.6';
+const KIMI_MODEL_FALLBACKS = [
+  'kimi-k2.6',
+  'kimi-k2.5',
+  'kimi-k2',
 ] as const;
 
 const TASK_MODEL_ENV_KEYS = {
-  default: 'MINIMAX_MODEL',
-  notes: 'MINIMAX_NOTES_MODEL',
-  parse: 'MINIMAX_PARSE_MODEL',
-  'search-intent': 'MINIMAX_SEARCH_INTENT_MODEL',
-  'search-rerank': 'MINIMAX_SEARCH_RERANK_MODEL',
+  default: ['KIMI_MODEL', 'MOONSHOT_MODEL', 'OPENAI_MODEL'],
+  notes: ['KIMI_NOTES_MODEL', 'MOONSHOT_NOTES_MODEL'],
+  parse: ['KIMI_PARSE_MODEL', 'MOONSHOT_PARSE_MODEL'],
+  'search-intent': ['KIMI_SEARCH_INTENT_MODEL', 'MOONSHOT_SEARCH_INTENT_MODEL'],
+  'search-rerank': ['KIMI_SEARCH_RERANK_MODEL', 'MOONSHOT_SEARCH_RERANK_MODEL'],
 } as const;
 
 const TASK_DEFAULT_MODELS = {
-  default: DEFAULT_MINIMAX_MODEL,
-  notes: DEFAULT_JSON_TASK_MODEL,
-  parse: DEFAULT_JSON_TASK_MODEL,
-  'search-intent': DEFAULT_SEARCH_TASK_MODEL,
-  'search-rerank': DEFAULT_SEARCH_TASK_MODEL,
+  default: DEFAULT_KIMI_MODEL,
+  notes: DEFAULT_KIMI_MODEL,
+  parse: DEFAULT_KIMI_MODEL,
+  'search-intent': DEFAULT_KIMI_MODEL,
+  'search-rerank': DEFAULT_KIMI_MODEL,
 } as const;
 
 const TASK_MAX_COMPLETION_TOKENS = {
@@ -39,10 +33,16 @@ const TASK_MAX_COMPLETION_TOKENS = {
 } as const;
 
 const TASK_MAX_TOKEN_ENV_KEYS = {
-  notes: 'MINIMAX_NOTES_MAX_COMPLETION_TOKENS',
-  parse: 'MINIMAX_PARSE_MAX_COMPLETION_TOKENS',
-  'search-intent': 'MINIMAX_SEARCH_INTENT_MAX_COMPLETION_TOKENS',
-  'search-rerank': 'MINIMAX_SEARCH_RERANK_MAX_COMPLETION_TOKENS',
+  notes: ['KIMI_NOTES_MAX_COMPLETION_TOKENS', 'MOONSHOT_NOTES_MAX_COMPLETION_TOKENS'],
+  parse: ['KIMI_PARSE_MAX_COMPLETION_TOKENS', 'MOONSHOT_PARSE_MAX_COMPLETION_TOKENS'],
+  'search-intent': [
+    'KIMI_SEARCH_INTENT_MAX_COMPLETION_TOKENS',
+    'MOONSHOT_SEARCH_INTENT_MAX_COMPLETION_TOKENS',
+  ],
+  'search-rerank': [
+    'KIMI_SEARCH_RERANK_MAX_COMPLETION_TOKENS',
+    'MOONSHOT_SEARCH_RERANK_MAX_COMPLETION_TOKENS',
+  ],
 } as const;
 
 type AiJsonTask = keyof typeof TASK_MAX_COMPLETION_TOKENS;
@@ -80,12 +80,15 @@ function uniqueNonEmpty(values: string[]) {
   return values.filter((value, index, array) => Boolean(value) && array.indexOf(value) === index);
 }
 
-function getConfiguredGlobalModel() {
-  return process.env.MINIMAX_MODEL || process.env.OPENAI_MODEL;
-}
+function readFirstEnv(keys: readonly string[]) {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (value) {
+      return value;
+    }
+  }
 
-function removeHighspeedSuffix(model: string | undefined) {
-  return typeof model === 'string' ? model.replace(/-highspeed$/i, '') : model;
+  return undefined;
 }
 
 function readPositiveInt(value: string | undefined, fallback: number) {
@@ -93,8 +96,8 @@ function readPositiveInt(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : fallback;
 }
 
-function isSearchTask(task: AiTask) {
-  return task === 'search-intent' || task === 'search-rerank';
+function getConfiguredGlobalModel() {
+  return readFirstEnv(TASK_MODEL_ENV_KEYS.default);
 }
 
 function getTaskModel(task: AiTask) {
@@ -102,47 +105,15 @@ function getTaskModel(task: AiTask) {
     return getConfiguredGlobalModel() || TASK_DEFAULT_MODELS.default;
   }
 
-  if (task === 'parse' || task === 'notes') {
-    return (
-      removeHighspeedSuffix(process.env[TASK_MODEL_ENV_KEYS[task]]) ||
-      removeHighspeedSuffix(getConfiguredGlobalModel()) ||
-      TASK_DEFAULT_MODELS[task]
-    );
-  }
-
-  if (isSearchTask(task)) {
-    return process.env[TASK_MODEL_ENV_KEYS[task]] || TASK_DEFAULT_MODELS[task];
-  }
-
   return (
-    process.env[TASK_MODEL_ENV_KEYS[task]] ||
+    readFirstEnv(TASK_MODEL_ENV_KEYS[task]) ||
     getConfiguredGlobalModel() ||
     TASK_DEFAULT_MODELS[task]
   );
 }
 
 function getTaskFallbacks(task: AiTask) {
-  if (task === 'default') {
-    return [...MINIMAX_MODEL_FALLBACKS];
-  }
-
-  if (task === 'parse' || task === 'notes') {
-    return [
-      TASK_DEFAULT_MODELS[task],
-      ...MINIMAX_MODEL_FALLBACKS
-        .filter((model) => !model.includes('highspeed'))
-        .map((model) => removeHighspeedSuffix(model) as string),
-    ];
-  }
-
-  if (isSearchTask(task)) {
-    const standardModels = MINIMAX_MODEL_FALLBACKS.filter((model) => !model.includes('highspeed'));
-    const highspeedModels = MINIMAX_MODEL_FALLBACKS.filter((model) => model.includes('highspeed'));
-
-    return [TASK_DEFAULT_MODELS[task], ...standardModels, ...highspeedModels];
-  }
-
-  return [TASK_DEFAULT_MODELS[task], ...MINIMAX_MODEL_FALLBACKS];
+  return [TASK_DEFAULT_MODELS[task], ...KIMI_MODEL_FALLBACKS];
 }
 
 function getUsageMetric(source: unknown, path: string[]) {
@@ -158,17 +129,19 @@ function getUsageMetric(source: unknown, path: string[]) {
 }
 
 export function getAiConfig(task: AiTask = 'default'): AiConfig {
-  const apiKey = process.env.MINIMAX_API_KEY || process.env.OPENAI_API_KEY;
+  const apiKey = process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY || process.env.OPENAI_API_KEY;
   const baseURL =
-    process.env.MINIMAX_BASE_URL || process.env.OPENAI_BASE_URL || DEFAULT_MINIMAX_BASE_URL;
+    process.env.KIMI_BASE_URL ||
+    process.env.MOONSHOT_BASE_URL ||
+    process.env.OPENAI_BASE_URL ||
+    DEFAULT_KIMI_BASE_URL;
   const configuredGlobalModel = getConfiguredGlobalModel();
   const model = getTaskModel(task);
-  const candidateModels =
-    task === 'parse' || task === 'notes'
-      ? uniqueNonEmpty([model, ...getTaskFallbacks(task)])
-      : isSearchTask(task)
-        ? uniqueNonEmpty([model, ...getTaskFallbacks(task), configuredGlobalModel || ''])
-        : uniqueNonEmpty([model, configuredGlobalModel || '', ...getTaskFallbacks(task)]);
+  const candidateModels = uniqueNonEmpty([
+    model,
+    configuredGlobalModel || '',
+    ...getTaskFallbacks(task),
+  ]);
 
   return {
     apiKey,
@@ -181,7 +154,7 @@ export function getAiConfig(task: AiTask = 'default'): AiConfig {
 
 export function getAiMaxCompletionTokens(task: AiJsonTask) {
   return readPositiveInt(
-    process.env[TASK_MAX_TOKEN_ENV_KEYS[task]],
+    readFirstEnv(TASK_MAX_TOKEN_ENV_KEYS[task]),
     TASK_MAX_COMPLETION_TOKENS[task]
   );
 }

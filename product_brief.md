@@ -47,7 +47,7 @@ After checking WeChat and email in the morning, a student pastes a mixed schedul
 | Frontend    | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Framer Motion        |
 | Backend     | Next.js App Router API Routes (Node runtime), Bun                      |
 | Database    | Supabase (PostgreSQL + RLS)                                            |
-| AI/NLP      | MiniMax via OpenAI-compatible API, optional OpenAI-compatible fallback |
+| AI/NLP      | Kimi via Moonshot/OpenAI-compatible API, optional OpenAI-compatible fallback |
 | OCR/PDF     | Tesseract.js, pdfjs-dist, @napi-rs/canvas                              |
 | Calendar/UI | FullCalendar, lucide-react, @ncdai/react-wheel-picker                  |
 

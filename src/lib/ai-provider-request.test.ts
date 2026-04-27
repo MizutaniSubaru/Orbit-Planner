@@ -19,9 +19,11 @@ type MockOutcome =
     };
 
 const originalEnv = {
-  MINIMAX_API_KEY: process.env.MINIMAX_API_KEY,
-  MINIMAX_MODEL: process.env.MINIMAX_MODEL,
-  MINIMAX_SEARCH_INTENT_MODEL: process.env.MINIMAX_SEARCH_INTENT_MODEL,
+  KIMI_API_KEY: process.env.KIMI_API_KEY,
+  KIMI_MODEL: process.env.KIMI_MODEL,
+  KIMI_SEARCH_INTENT_MODEL: process.env.KIMI_SEARCH_INTENT_MODEL,
+  MOONSHOT_API_KEY: process.env.MOONSHOT_API_KEY,
+  MOONSHOT_MODEL: process.env.MOONSHOT_MODEL,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
 };
@@ -66,27 +68,31 @@ const { requestAiJson } = await import('@/lib/ai-provider');
 beforeEach(() => {
   callModels = [];
   queuedOutcomes = [];
-  process.env.MINIMAX_API_KEY = 'test-key';
+  process.env.KIMI_API_KEY = 'test-key';
+  delete process.env.MOONSHOT_API_KEY;
   delete process.env.OPENAI_API_KEY;
-  delete process.env.MINIMAX_MODEL;
+  delete process.env.KIMI_MODEL;
+  delete process.env.MOONSHOT_MODEL;
   delete process.env.OPENAI_MODEL;
-  delete process.env.MINIMAX_SEARCH_INTENT_MODEL;
+  delete process.env.KIMI_SEARCH_INTENT_MODEL;
 });
 
 afterEach(() => {
-  process.env.MINIMAX_API_KEY = originalEnv.MINIMAX_API_KEY;
-  process.env.MINIMAX_MODEL = originalEnv.MINIMAX_MODEL;
-  process.env.MINIMAX_SEARCH_INTENT_MODEL = originalEnv.MINIMAX_SEARCH_INTENT_MODEL;
+  process.env.KIMI_API_KEY = originalEnv.KIMI_API_KEY;
+  process.env.KIMI_MODEL = originalEnv.KIMI_MODEL;
+  process.env.KIMI_SEARCH_INTENT_MODEL = originalEnv.KIMI_SEARCH_INTENT_MODEL;
+  process.env.MOONSHOT_API_KEY = originalEnv.MOONSHOT_API_KEY;
+  process.env.MOONSHOT_MODEL = originalEnv.MOONSHOT_MODEL;
   process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
   process.env.OPENAI_MODEL = originalEnv.OPENAI_MODEL;
 });
 
 describe('requestAiJson', () => {
-  it('retries unsupported search models with the next fallback candidate', async () => {
-    process.env.MINIMAX_SEARCH_INTENT_MODEL = 'MiniMax-M2.5-highspeed';
+  it('retries unsupported search models with the next Kimi fallback candidate', async () => {
+    process.env.KIMI_SEARCH_INTENT_MODEL = 'kimi-unknown';
     queuedOutcomes = [
       {
-        message: '500 your current token plan not support model, MiniMax-M2.5-highspeed (2061)',
+        message: 'model kimi-unknown is not supported by your token plan',
         status: 500,
         type: 'error',
       },
@@ -111,6 +117,6 @@ describe('requestAiJson', () => {
       keywords: 'advisor',
       type: 'all',
     });
-    expect(callModels.slice(0, 2)).toEqual(['MiniMax-M2.5-highspeed', 'MiniMax-M2.5']);
+    expect(callModels.slice(0, 2)).toEqual(['kimi-unknown', 'kimi-k2.6']);
   });
 });
